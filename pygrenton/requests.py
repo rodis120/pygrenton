@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from typing import Any
 import random
 
 class Request(ABC):
@@ -33,7 +34,7 @@ class CheckAlive(Request):
 
 class SetRequest(Request):
 
-    def __init__(self, device_id: str, index: int, val) -> None:
+    def __init__(self, device_id: str, index: int, val: Any) -> None:
         if isinstance(val, str):
             val = '"' + val + '"'
         elif isinstance(val, bool):
@@ -64,7 +65,7 @@ class GetRequest(Request):
 
 class ExecuteRequest(Request):
 
-    def __init__(self, device_id: str, intdex: int, *args) -> None:
+    def __init__(self, device_id: str, intdex: int, *args: Any) -> None:
         params_str = ''.join([(',' + str(i)) for i in args]) if args.count() > 0 else ", 0"
         payload = "{}:execute({}{})".format(device_id, intdex, params_str)
         super().__init__(payload)
