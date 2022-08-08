@@ -8,16 +8,19 @@ class GrentonCypher:
     def __init__(self, key: str, iv: str) -> None:
         self._key = b64decode(key)
         self._iv = b64decode(iv)
-        self._padder = padding.PKCS7(128).padder()
-        self._unpadder = padding.PKCS7(128).unpadder()
-        self._cypher = Cipher(algorithms.AES(self._key), modes.CBC(self._iv), backend=default_backend())
-        self._encryptor = self._cypher.encryptor()
-        self._decryptor = self._cypher.decryptor()
+        self._padding = padding.PKCS7(128)
+        self._cypher = Cipher(
+            algorithms.AES(self._key), modes.CBC(self._iv), backend=default_backend()
+        )
 
     def encrypt(self, data: bytes) -> bytes:
-        data = self._padder.update(data) + self._padder.finalize()
-        return self._encryptor.update(data) + self._encryptor.finalize()
+        encryptor = self._cypher.encryptor()
+        padder = self._padding.padder()
+        data = padder.update(data) + padder.finalize()
+        return encryptor.update(data) + encryptor.finalize()
 
     def decrypt(self, data: bytes) -> bytes:
-        data = self._decryptor.update(data) + self._decryptor.finalize()
-        return self._unpadder.update(data) + self._unpadder.finalize()
+        decryptor = self._cypher.decryptor()
+        unpadder = self._padding.unpadder()
+        data = decryptor.update(data) + decryptor.finalize()
+        return unpadder.update(data) + unpadder.finalize()
