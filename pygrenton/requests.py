@@ -66,7 +66,7 @@ class GetRequest(Request):
 class ExecuteRequest(Request):
 
     def __init__(self, device_id: str, intdex: int, *args: Any) -> None:
-        params_str = ''.join([(',' + str(i)) for i in args]) if args.count() > 0 else ", 0"
+        params_str = ''.join([(',' + str(i)) for i in args]) if len(args) > 0 else ", 0"
         payload = "{}:execute({}{})".format(device_id, intdex, params_str)
         super().__init__(payload)
 
