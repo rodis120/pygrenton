@@ -1,8 +1,8 @@
 
 import json
-from modules import Module, CLU_Module
+from config_objects import CLUConfig, ModuleConfig
 
-def _parse_module(json_elm) -> Module:
+def _parse_module(json_elm) -> ModuleConfig:
     sn = json_elm["sn"]
     hw_type = json_elm["hwType"]
     hw_version = json_elm["hwVer"]
@@ -11,9 +11,9 @@ def _parse_module(json_elm) -> Module:
     fw_version = json_elm["fwVer"]
     status = json_elm["status"]
 
-    return Module(sn, hw_type, hw_version, fw_type, fw_api_version, fw_version, status)
+    return ModuleConfig(sn, hw_type, hw_version, fw_type, fw_api_version, fw_version, status)
 
-def parse_json(file) -> CLU_Module:
+def parse_json(file) -> CLUConfig:
     json_doc = json.load(file)
     
     serial_number = json_doc["sn"]
@@ -25,7 +25,15 @@ def parse_json(file) -> CLU_Module:
     fw_version = json_doc["fwVer"]
     status = json_doc["status"]
 
-    modules = [_parse_module(jelm) for jelm in json_doc["tfbusDevices"]]
+    modules = {}
 
-    return CLU_Module(serial_number, mac, hw_type, hw_version, fw_type, fw_api_version, fw_version, status, modules)
+    for elm in json_doc["tfbusDevices"]:
+        mod = _parse_module(elm)
+        modules[mod.serial_number] = mod
+
+    for elm in json_doc["zwaveDevices"]:
+        mod = _parse_module(elm)
+        modules[mod.serial_number] = mod
+
+    return CLUConfig(serial_number, mac, hw_type, hw_version, fw_type, fw_api_version, fw_version, status, modules)
 

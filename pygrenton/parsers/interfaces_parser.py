@@ -114,24 +114,44 @@ def parse_clu_xml(file) -> CluInterface:
 
     return CluInterface(name, hw_type, hw_version, fw_type, fw_version, features, methods, objects)
 
+def _append_elm(dict, key, val):
+    if key in dict:
+        dict[key] += val
+    else:
+        dict[key] = [val]
+
 def parse_interfaces(dir):
 
-    clus = []
-    modules = []
-    objects = []
+    clus: dict[int, list[CluInterface]] = {}
+    modules: dict[int, list[ModuleInterface]] = {}
+    objects: dict[int, list[CluObjectInterface]] = {}
 
     for filename in os.scandir(dir):
         if filename.is_file():
             try:
                 with open(filename, "r") as file:
                     if filename.name.startswith("clu_"):
-                        clus += parse_clu_xml(file)
+                        clu = parse_clu_xml(file)
+                        _append_elm(clus, clu.hw_type, clu)
+
                     elif filename.name.startswith("module_"):
-                        modules += parse_module_xml(file)
+                        mod = parse_clu_xml(file)
+                        _append_elm(modules, mod.hw_type, mod)
+
                     elif filename.name.startswith("object_"):
-                        objects += parse_clu_object_xml(file)
+                        obj = parse_clu_xml(file)
+                        _append_elm(obj, obj.hw_type, obj)
 
             except IOError:
                 pass
+
+    for k, v in clus.items():
+        v.sort(key=lambda x: x.fw_api_version)
+
+    for k, v in modules.items():
+        v.sort(key=lambda x: x.fw_api_version)
+
+    for k, v in objects.items():
+        v.sort(key=lambda x: x.version)
 
     return clus, modules, objects
