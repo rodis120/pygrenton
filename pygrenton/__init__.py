@@ -6,14 +6,13 @@ from .requests import Request, CheckAlive
 
 class GrentonApi:
 
-    def __init__(self, ip: str, port: int, key: str, iv: str, timeout: float = 1, msg_interval: int = 50) -> None:
+    def __init__(self, ip: str, port: int, key: str, iv: str, timeout: float = 1) -> None:
         self._addr = (ip, port)
         self._timeout = timeout
         self._local_ip = socket.gethostbyname(socket.gethostname())
         self._cypher = GrentonCypher(key, iv)
 
         self._responses: dict = {}
-        self._msg_interval = msg_interval
         self._msg_queue: list[tuple[Request, threading.Condition]] = []
 
         self._msg_condition = threading.Condition()
@@ -66,10 +65,6 @@ class GrentonApi:
                 req, resp_cv = self._msg_queue.pop(0)
 
             payload = self._cypher.encrypt(bytes(req.create_request(self._local_ip), "utf-8"))
-
-            timeDelta = (time.time() - lastSendTime) * 1000
-            if timeDelta < self._msg_interval:
-                time.sleep(self._msg_interval - timeDelta)
 
             sock.sendto(payload, self._addr)
 
