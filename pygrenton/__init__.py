@@ -1,6 +1,5 @@
 import socket
 import threading
-import time
 from .cipher import GrentonCypher
 from .requests import Request, CheckAlive
 
@@ -24,7 +23,7 @@ class GrentonApi:
 
         with cv:
             cv.wait(self._timeout)
-            resp = self._responses[req._id]
+            resp = self._responses.pop(req._id)
             if resp is None:
                 raise TimeoutError
             
