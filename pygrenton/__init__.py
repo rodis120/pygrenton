@@ -53,9 +53,6 @@ class GrentonApi:
             return resp_cv
     
     def _sender_loop(self):
-        
-        lastSendTime = time.time()
-
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.settimeout(self._timeout)
 
