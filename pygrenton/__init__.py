@@ -46,7 +46,7 @@ class GrentonApi:
         with self._msg_condition:
             resp_cv = threading.Condition()
 
-            self._msg_queue += (req, resp_cv)
+            self._msg_queue.append((req, resp_cv))
             self._msg_condition.notify_all()
 
             return resp_cv
