@@ -1,5 +1,6 @@
 import socket
 import threading
+import queue
 from .cipher import GrentonCypher
 from .requests import Request, CheckAlive
 
@@ -12,7 +13,7 @@ class GrentonApi:
         self._cypher = GrentonCypher(key, iv)
 
         self._responses: dict = {}
-        self._msg_queue: list[tuple[Request, threading.Condition]] = []
+        self._msg_queue: queue.Queue[tuple[Request, threading.Condition]] = queue.Queue()
 
         self._msg_condition = threading.Condition()
         self._msg_sender_thread = threading.Thread(target=self._sender_loop, daemon=True)
@@ -46,7 +47,7 @@ class GrentonApi:
         with self._msg_condition:
             resp_cv = threading.Condition()
 
-            self._msg_queue.append((req, resp_cv))
+            self._msg_queue.put((req, resp_cv))
             self._msg_condition.notify_all()
 
             return resp_cv
@@ -58,7 +59,7 @@ class GrentonApi:
         while True:
             with self._msg_condition:
                 self._msg_condition.wait_for(lambda: not len(self._msg_queue) == 0)
-                req, resp_cv = self._msg_queue.pop(0)
+                req, resp_cv = self._msg_queue.get()
 
             payload = self._cypher.encrypt(bytes(req.create_request(self._local_ip), "utf-8"))
 
