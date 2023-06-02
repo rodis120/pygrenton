@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pygrenton"
-version = "0.0.4"
+version = "0.0.5"
 authors = [
   { name="Paweł Rogaliński", email="progalin55@gmial.com" },
 ]
