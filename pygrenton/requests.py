@@ -57,7 +57,7 @@ class GetRequest(Request):
         if resp.isdecimal():
             return float(resp)
         elif resp.startswith("\"") and resp.endswith("\""):
-            return resp[1:len(resp)]
+            return resp[1:len(resp) - 1]
         elif resp in ["true", "false"]:
             return resp == "true"
         else:
