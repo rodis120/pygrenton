@@ -14,6 +14,7 @@ class GFeature:
 
     def get(self):
         if not self.gettable:
+            #TODO: add and rise custom exception
             return None
         
         #TODO: getting data
@@ -22,9 +23,9 @@ class GFeature:
         if not self.settable:
             return None
         if self.enum is not None and value not in self.enum:
-            return None
+            raise ValueError(f"Value: {value} is not in enum: {self.enum}")
         if self.value_range is not None and (value < self.value_range[0] or value > self.value_range[1]):
-            return None 
+            raise ValueError(f"Value: {value} is not in value range: ({self.value_rang[0]} - {self.value_rang[1]})")
         
         #TODO: setting data
 
