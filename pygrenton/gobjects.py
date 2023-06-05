@@ -1,6 +1,8 @@
 
 from .types import DataType
 
+#TODO: should I make them dataclasses instead of what they are now
+
 class GFeature:
     name: str
     index: int
@@ -12,14 +14,14 @@ class GFeature:
     enum: list
     value_range: tuple[int, int]
 
-    def get(self):
+    def getValue(self):
         if not self.gettable:
             #TODO: add and rise custom exception
             return None
         
         #TODO: getting data
 
-    def set(self, value):
+    def setValue(self, value):
         if not self.settable:
             #TODO: add and rise custom exception
             return None
@@ -70,7 +72,7 @@ class GObject:
             
         return None
 
-    def getFeatureByIndex(self, index: int) ->GFeature | None:
+    def getFeatureByIndex(self, index: int) -> GFeature | None:
         for feature in self._features:
             if feature.index == index:
                 return feature
@@ -87,7 +89,7 @@ class GObject:
             
         return None
 
-    def getMethodByIndex(self, index: int) ->GMethod | None:
+    def getMethodByIndex(self, index: int) -> GMethod | None:
         for method in self._methods:
             if method.index == index:
                 return method
@@ -96,26 +98,31 @@ class GObject:
 
 class GModule:
     
-    _objects: dict[int, list[GObject]]
+    #TODO: add data about module eg. name, hwType, version etc.
+    
+    _objects: list[GObject]
     
     #TODO: add constructor
     
     def getObjects(self) -> list[GObject]:
-        return [obj for _, obj_list in self._objects.items() for obj in obj_list]
+        return self._objects
     
-    def getObjectsByType(self, type: int) -> list[GObject]:
-        if type in self._objects.keys():
-            return self._objects[type]
-        
-        return []
+    def getObjectsByType(self, obj_type: int) -> list[GObject]:
+        return [obj for obj in self._objects if obj._obj_type == obj_type]
     
     def getObjectById(self, id: str) -> GObject:
-        #TODO: decide between creating separate dict or iterating through every object in _objects
-        pass
+        for obj in self._objects:
+            if obj._unique_id == id:
+                return obj
+            
+        return None
     
     def getObjectByName(self, name: str) -> GObject:
-        #TODO: decide between creating separate dict or iterating through every object in _objects
-        pass
+        for obj in self._objects:
+            if obj._name == name:
+                return obj
+            
+        return None
 
 class GCLU:
     
