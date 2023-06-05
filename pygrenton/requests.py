@@ -2,6 +2,8 @@ from abc import ABC, abstractmethod
 from typing import Any
 import random
 
+#TODO: rewrite this thing
+
 class Request(ABC):
 
     def __init__(self, payload: str) -> None:

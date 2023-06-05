@@ -2,7 +2,7 @@
 import re
 
 _NAME_FIELD = re.compile("-- NAME_.*")
-_MODULE_FIELD = re.compile("mm_\d{9} = OBJECT:new([^,]*,[^,\n]*){3}\) --.*")
+_MODULE_FIELD = re.compile("mm_\d{9} = OBJECT:new([^,]*,[^,\n]*){3}\) --.*") #TODO: delete it
 _IO_MODULE_FIELD = re.compile("[A-Z]{3}\d{4}.*OBJECT:new([^,]*,[^,\n]*){3}\)")
 _OBJECT_FIELD = re.compile("[A-Z]{3}\d{4}.*OBJECT:new([^,]*,[^,\n]*){1}\)")
 _EXTRACT_BRACKET = re.compile("(?<=\().*(?=\))")
@@ -18,6 +18,7 @@ def _parse_name(line: str) -> tuple[str, str]:
 
     return object_id, name
 
+#TODO: delete this too
 def _parse_module(line: str) -> tuple[int, int, int, int]:
     bracket = re.search(_EXTRACT_BRACKET, line).string
     args1 = re.split(_SPLIT_ARGS, bracket)

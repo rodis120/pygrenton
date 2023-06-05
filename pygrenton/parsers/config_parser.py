@@ -8,7 +8,7 @@ def parse_clu_config(json_confg, om_config, interface_manager: InterfaceManager)
     clu = parse_json(json_confg)
     names, io_modules, objects = parse_om(om_config)
     
-    gclu = GCLU()
+    gclu = GCLU() #TODO: do sth with it
 
     for serial_number, module_objects in io_modules.items():
         module = clu.modules[serial_number]

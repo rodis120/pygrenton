@@ -3,6 +3,7 @@ from parsers.interfaces_parser import parse_interfaces
 from interfaces import CluObjectInterface, CluInterface, ModuleInterface
 
 class InterfaceManager:
+    #TODO: implement dynamic interface downloading
 
     def __init__(self, interfaces_dir) -> None:
         self._dir = interfaces_dir

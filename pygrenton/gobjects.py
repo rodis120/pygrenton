@@ -21,6 +21,7 @@ class GFeature:
 
     def set(self, value):
         if not self.settable:
+            #TODO: add and rise custom exception
             return None
         if self.enum is not None and value not in self.enum:
             raise ValueError(f"Value: {value} is not in enum: {self.enum}")
@@ -58,6 +59,9 @@ class GObject:
         self._obj_type = obj_type
         self._features = features
         self._methods = methods
+        
+    def getFeatures(self) -> list[GFeature]:
+        return self._features
 
     def getFeatureByName(self, name: str) -> GFeature | None:
         for feature in self._features:
@@ -72,6 +76,9 @@ class GObject:
                 return feature
             
         return None
+
+    def getMethods(self) -> list[GMethod]:
+        return self._methods
 
     def getMethodByName(self, name: str) -> GMethod | None:
         for method in self._methods:
@@ -89,7 +96,30 @@ class GObject:
 
 class GModule:
     
-    objects: list[GObject]
+    _objects: dict[int, list[GObject]]
+    
+    #TODO: add constructor
+    
+    def getObjects(self) -> list[GObject]:
+        return [obj for _, obj_list in self._objects.items() for obj in obj_list]
+    
+    def getObjectsByType(self, type: int) -> list[GObject]:
+        if type in self._objects.keys():
+            return self._objects[type]
+        
+        return []
+    
+    def getObjectById(self, id: str) -> GObject:
+        #TODO: decide between creating separate dict or iterating through every object in _objects
+        pass
+    
+    def getObjectByName(self, name: str) -> GObject:
+        #TODO: decide between creating separate dict or iterating through every object in _objects
+        pass
 
 class GCLU:
+    
+    #TODO: add constructor
+    #TODO: implement(copy it from GrentonApi) request queue
+    #TODO: add ways for getting modules and objects
     pass
