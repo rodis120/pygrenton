@@ -1,5 +1,6 @@
 
-from .types import DataType
+from .types import DataType, CallType
+from gclu import GCLU
 
 class GFeature:
     clu: GCLU
@@ -46,6 +47,7 @@ class GMethod:
     clu: GCLU
     name: str
     index: int
+    call_type: CallType
 
     #TODO: implement parameters
     params: list
@@ -53,10 +55,11 @@ class GMethod:
     return_type: DataType
     unit: str
     
-    def __init__(self, clu, name, index, params, return_type, unit) -> None:
+    def __init__(self, clu, name, index, call_type, params, return_type, unit) -> None:
         self.clu = clu
         self.name = name
         self.index = index
+        self.call_type = call_type
         self.params = params
         self.return_type = return_type
         self.unit = unit
@@ -119,38 +122,3 @@ class GObject:
     
     def execute(self, index: int, **kwargs):
         pass
-
-class GModule:
-    
-    #TODO: add data about module eg. name, hwType, version etc.
-    
-    clu: GCLU
-    gobjects: list[GObject]
-    
-    def __init__(self) -> None:
-        #TODO: just do it.
-        pass
-    
-    def getObjectsByType(self, obj_type: int) -> list[GObject]:
-        return [obj for obj in self.gobjects if obj.obj_type == obj_type]
-    
-    def getObjectById(self, id: str) -> GObject:
-        for obj in self.gobjects:
-            if obj.unique_id == id:
-                return obj
-            
-        return None
-    
-    def getObjectByName(self, name: str) -> GObject:
-        for obj in self.gobjects:
-            if obj.name == name:
-                return obj
-            
-        return None
-
-class GCLU:
-    
-    #TODO: add constructor
-    #TODO: implement(copy it from GrentonApi) request queue
-    #TODO: add ways for getting modules and objects
-    pass
