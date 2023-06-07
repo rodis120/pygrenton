@@ -1,8 +1,8 @@
 
-from config_json_parser import parse_json
-from om_parser import parse_om
-from interface_manager import InterfaceManager
-from gobject import GCLU, GModule, GObject
+from .config_json_parser import parse_json
+from .om_parser import parse_om
+from ..interface_manager import InterfaceManager
+from ..gobject import GCLU, GModule, GObject
 
 def parse_clu_config(json_confg, om_config, interface_manager: InterfaceManager):
     clu = parse_json(json_confg)

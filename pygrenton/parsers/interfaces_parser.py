@@ -2,7 +2,7 @@
 import os
 import xml.dom.minidom as md
 from xml.dom.minidom import Element
-from interfaces import *
+from ..interfaces import *
 
 def _parse_feature(elm: Element) -> FeatureInterface:
     name = elm.getAttribute("name")

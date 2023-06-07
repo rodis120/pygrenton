@@ -1,5 +1,5 @@
 
-from gobject import GObject
+from .gobject import GObject
 
 class GCLU:
     

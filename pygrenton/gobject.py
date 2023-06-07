@@ -1,6 +1,6 @@
 
 from .types import DataType, CallType
-from gclu import GCLU
+from .gclu import GCLU
 
 class GFeature:
     clu: GCLU
