@@ -7,7 +7,7 @@ from .requests import Request, CheckAlive
 
 class GrentonApi:
 
-    def __init__(self, ip: str, port: int, key: str, iv: str, timeout: float = 1) -> None:
+    def __init__(self, ip: str, port: int, key: str | bytes, iv: str | bytes, timeout: float = 1) -> None:
         self._addr = (ip, port)
         self._timeout = timeout
         self._local_ip = socket.gethostbyname(socket.gethostname())
