@@ -1,6 +1,6 @@
+import random
 from abc import ABC, abstractmethod
 from typing import Any
-import random
 
 #TODO: rewrite this thing
 
@@ -32,7 +32,7 @@ class CheckAlive(Request):
     def parse_response(self, response: str) -> str:
         spl = response.split(":")
         clu_serial_hex = spl.pop()
-        return int(clu_serial_hex, base=16)
+        return str(int(clu_serial_hex, base=16))
 
 class SetRequest(Request):
 

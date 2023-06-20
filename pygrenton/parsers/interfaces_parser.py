@@ -2,7 +2,9 @@
 import os
 import xml.dom.minidom as md
 from xml.dom.minidom import Element
+
 from ..interfaces import *
+
 
 def _parse_feature(elm: Element) -> FeatureInterface:
     name = elm.getAttribute("name")
@@ -14,7 +16,7 @@ def _parse_feature(elm: Element) -> FeatureInterface:
 
     value_range = None
     if elm.hasAttribute("range"):
-        value_range = (int(i) for i in elm.getAttribute("range").split("-"))
+        value_range = tuple(int(i) for i in elm.getAttribute("range").split("-"))
 
     enum = None
     if elm.hasAttribute("enum"):
@@ -32,7 +34,7 @@ def _parse_parameter(elm: Element) -> ParameterInterface:
 
     value_range = None
     if elm.hasAttribute("range"):
-        value_range = (int(x) for x in elm.getAttribute("range").split("-"))
+        value_range = tuple(int(x) for x in elm.getAttribute("range").split("-"))
 
     enum = None
     if elm.hasAttribute("enum"):
@@ -52,18 +54,18 @@ def _parse_method(elm: Element) -> MethodInterface:
 
     params = [_parse_parameter(par) for par in elm.getElementsByTagName("param")]
 
-    return MethodInterface(name, index, call, params, return_value, None)
+    return MethodInterface(name, index, call, return_value, None, params)
 
 def _parse_module_object(xml: Element) -> ModuleObjectInterface:
 
     obj_class = int(xml.getAttribute("class"))
     name = xml.getAttribute("name")
-    type = ModuleObjectType(xml.getAttribute("type"))
+    obj_type = ModuleObjectType(xml.getAttribute("type"))
 
     features = [_parse_feature(x) for x in xml.getElementsByTagName("feature")]
     methods = [_parse_method(x) for x in xml.getElementsByTagName("methods")]
 
-    return ModuleObjectInterface(name, obj_class, type, features, methods)
+    return ModuleObjectInterface(name, obj_class, obj_type, features, methods)
 
 def parse_clu_object_xml(file) -> CluObjectInterface:
     dom = md.parse(file)
@@ -89,7 +91,11 @@ def parse_module_xml(file) -> ModuleInterface:
     fw_type = int(fw.getAttribute("typeId"), 16)
     fw_api_version = int(fw.getAttribute("version"), 16)
 
-    objects = [_parse_module_object(obj) for obj in dom.getElementsByTagName("object")]
+    objects = {}
+
+    for obj_xml in dom.getElementsByTagName("object"):
+        obj = _parse_module_object(obj_xml)
+        objects[obj.obj_type]
 
     return ModuleInterface(name, hw_type, fw_type, fw_api_version, objects)
 

@@ -1,6 +1,7 @@
 
 from enum import Enum
 
+
 class CallType(Enum):
     EXECUTE = "execute"
     GET = "get"

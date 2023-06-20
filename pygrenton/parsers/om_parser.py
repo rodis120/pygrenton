@@ -38,7 +38,7 @@ def _parse_io_module(line: str) -> tuple[str, int, int]:
     args = re.split(_SPLIT_ARGS, bracket)
 
     object_class = int(args[0])
-    module_sn = int(re.search(_EXTRACT_NUMBER, args[1]))
+    module_sn = int(re.search(_EXTRACT_NUMBER, args[1]).string)
     object_id = args[3][1:-1]
 
     return object_id, object_class, module_sn
@@ -66,14 +66,14 @@ def parse_om(file):
             io_mod = _parse_io_module(line)
             sn = io_mod[2]
             
-            if sn in io_modules.keys:
-                io_modules[sn] += io_mod
+            if io_modules[sn] is not None:
+                io_modules[sn].append(io_mod)
             else:
                 io_modules[sn] = [io_mod]
         
         elif re.match(_OBJECT_FIELD, line):
             obj = _parse_object(line)
-            objects += obj
+            objects.append(obj)
 
     return names, io_modules, objects
 

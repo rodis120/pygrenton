@@ -1,6 +1,8 @@
 
 import json
+
 from ..config_objects import CLUConfig, ModuleConfig
+
 
 def _parse_module(json_elm) -> ModuleConfig:
     sn = json_elm["sn"]

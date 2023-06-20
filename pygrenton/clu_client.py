@@ -1,12 +1,11 @@
 import asyncio
-import socket
-import threading
 import queue
 import random
+import socket
+import threading
+
 from .cipher import GrentonCypher
 
-class CluMessage:
-    pass
 
 class CluClient:
 
@@ -17,11 +16,23 @@ class CluClient:
         self._cypher = cipher
 
         self._responses: dict = {}
-        self._msg_queue: queue.Queue[tuple[str, threading.Event]] = queue.Queue()
+        self._msg_queue: queue.Queue[tuple[str, threading.Event, str]] = queue.Queue()
 
         self._msg_condition = threading.Condition()
         self._msg_sender_thread = threading.Thread(target=self._sender_loop, daemon=True)
         self._msg_sender_thread.start()
+
+    @property
+    def clu_ip(self) -> str:
+        return self._addr[0]
+
+    @property
+    def clu_port(self) -> int:
+        return self._addr[1]
+
+    @property
+    def client_ip(self) -> str:
+        return self._local_ip
 
     async def send_request_async(self, msg: str):
         event, resp_token = self._appendQueue(msg)
@@ -35,12 +46,63 @@ class CluClient:
         return resp
 
     def send_request(self, msg: str):
-        return asyncio.run(self.send_request_async(msg))
+        return asyncio.get_event_loop().run_until_complete(self.send_request_async(msg))
+
+    async def get_value_async(self, object_id: str, index: int):
+        req_id = self._generate_id_hex()
+        payload = f"req:{self._local_ip}:{req_id}:get({index})"
+
+        resp = await self.send_request_async(payload)
+
+        resp = resp.split(":").pop()
+        if resp.isdecimal():
+            return float(resp)
+        elif resp.startswith("\"") and resp.endswith("\""):
+            return resp[1:len(resp)]
+        elif resp in ["true", "false"]:
+            return resp == "true"
+        else:
+            return None
+
+    def get_value(self, object_id: str, index: int):
+        return asyncio.get_event_loop().run_until_complete(self.get_value_async(object_id, index))
+
+    async def set_value_async(self, object_id: str, index: int, value) -> None:
+        req_id = self._generate_id_hex()
+        payload = f"req:{self._local_ip}:{req_id}:set({index},{value})"
+
+        await self.send_request_async(payload)
+
+    def set_value(self, object_id: str, index: int, value) -> None:
+        asyncio.get_event_loop().run_until_complete(self.set_value_async(object_id, index, value))
+
+    async def execute_method_async(self, object_id, index, *args):
+        req_id = self._generate_id_hex()
+        args_str = ''.join([(',' + str(i)) for i in args]) if len(args) > 0 else ", 0"
+        payload = f"req:{self._local_ip}:{req_id}:{object_id}:execute({index}{args_str})"
+
+        resp = await self.send_request_async(payload)
+
+        resp = resp.split(":").pop()
+        if resp.isdecimal():
+            return float(resp)
+        elif resp.startswith("\"") and resp.endswith("\""):
+            return resp[1:len(resp)]
+        elif resp in ["true", "false"]:
+            return resp == "true"
+        else:
+            return None
+
+    def execute_method(self, object_id, index, *args):
+        return asyncio.get_event_loop().run_until_complete(self.execute_method_async(object_id, index, args))
     
+    def _generate_id_hex(self, lenght=8) -> str:
+        return ''.join(random.choices("01234567890abcdef", k=lenght))
+
     def _appendQueue(self, msg: str):
         with self._msg_condition:
             resp_event = threading.Event()
-            resp_token = random.randint(0, 1000000)
+            resp_token = msg + str(random.randint(0, 1000000)) #TODO: come up with sth better
 
             self._msg_queue.put((msg, resp_event, resp_token))
             self._msg_condition.notify_all()

@@ -1,6 +1,8 @@
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+
 from .types import CallType, DataType, ModuleObjectType
+
 
 @dataclass
 class FeatureInterface:
@@ -13,8 +15,8 @@ class FeatureInterface:
     data_type: DataType
     unit: str
 
-    enum: list = None
-    value_range: tuple[int, int] = None
+    enum: list | None = None
+    value_range: tuple[int, int] | None = None
 
 @dataclass
 class ParameterInterface:
@@ -22,8 +24,8 @@ class ParameterInterface:
     data_type: DataType
     unit: str
 
-    enum: list = None
-    value_range: tuple[int, int] = None
+    enum: list | None = None
+    value_range: tuple[int, int] | None = None
 
 @dataclass
 class MethodInterface:
@@ -31,10 +33,10 @@ class MethodInterface:
     index: int
     call: CallType
 
-    parameters: list[ParameterInterface]
-
     return_type: DataType
-    unit: str
+    unit: str | None
+
+    parameters: list[ParameterInterface] = field(default_factory=list)
 
 @dataclass
 class CluObjectInterface:
@@ -42,17 +44,17 @@ class CluObjectInterface:
     obj_class: int
     version: int
 
-    features: list[FeatureInterface]
-    methods: list[MethodInterface]
+    features: list[FeatureInterface] = field(default_factory=list)
+    methods: list[MethodInterface] = field(default_factory=list)
 
 @dataclass
 class ModuleObjectInterface:
     name: str
     obj_class: int
-    type: ModuleObjectType
+    obj_type: ModuleObjectType
 
-    features: list[FeatureInterface]
-    methods: list[MethodInterface]
+    features: list[FeatureInterface] = field(default_factory=list)
+    methods: list[MethodInterface] = field(default_factory=list)
 
 @dataclass
 class ModuleInterface:
@@ -61,7 +63,7 @@ class ModuleInterface:
     fw_type: int
     fw_api_version: int
 
-    objects: list[ModuleObjectInterface]
+    objects: dict[int, ModuleObjectInterface] = field(default_factory=dict)
 
 @dataclass
 class CluInterface:
@@ -71,7 +73,7 @@ class CluInterface:
     fw_type: int
     fw_api_version: int
 
-    features: list[FeatureInterface]
-    methods: list[MethodInterface]
+    features: list[FeatureInterface] = field(default_factory=list)
+    methods: list[MethodInterface] = field(default_factory=list)
 
-    objects: dict[str, int]
+    objects: dict[str, CluObjectInterface] = field(default_factory=dict)

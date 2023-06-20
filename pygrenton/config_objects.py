@@ -1,5 +1,6 @@
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
+
 
 @dataclass
 class ModuleConfig:
@@ -8,7 +9,7 @@ class ModuleConfig:
     hw_version: int
     fw_type: int
     fw_api_version: int
-    fw_verion: str
+    fw_version: int
     status: str
 
 @dataclass
@@ -19,7 +20,7 @@ class CLUConfig:
     hw_version: int
     fw_type: int
     fw_api_version: int
-    fw_verion: str
+    fw_version: int
     status: str
 
     modules: dict[int, ModuleConfig]
