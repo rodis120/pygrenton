@@ -110,9 +110,9 @@ class CluClient:
             return resp_event, resp_token
     
     def _sender_loop(self):
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.settimeout(self._timeout)
-
+        is_socket_open = False
+        sock = None
+        
         while True:
             with self._msg_condition:
                 self._msg_condition.wait_for(lambda: not self._msg_queue.empty())
@@ -121,12 +121,23 @@ class CluClient:
             payload = self._cypher.encrypt(bytes(msg, "utf-8"))
 
             try:
+                if not is_socket_open:
+                    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                    is_socket_open = True
+                
+                sock.settimeout(self._timeout)
                 sock.sendto(payload, self._addr)
                 
-                resp = sock.recvfrom(1024)[0]
-                resp = self._cypher.decrypt(resp).decode("utf-8")
+                response = sock.recvfrom(1024)[0]
+                sock.close()
+                
+                decrypted = self._cypher.decrypt(response).decode("utf-8")
 
-                self._responses[resp_token] = resp
+                self._responses[resp_token] = decrypted
+                
+                if self._msg_queue.empty():
+                    sock.close()
+                    is_socket_open = False
 
             except Exception as e:
                 self._responses[resp_token] = e
