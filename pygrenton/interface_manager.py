@@ -1,6 +1,6 @@
 
 from parsers.interfaces_parser import parse_interfaces
-from interfaces import CluObjectInterface, CluInterface, ModuleInterface
+from interfaces import CluInterface, ModuleInterface
 
 class InterfaceManager:
     #TODO: implement dynamic interface downloading
