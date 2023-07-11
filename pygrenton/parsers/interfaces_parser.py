@@ -99,7 +99,7 @@ def parse_module_xml(file) -> ModuleInterface:
 
     return ModuleInterface(name, hw_type, fw_type, fw_api_version, objects)
 
-def parse_clu_xml(file) -> CluInterface:
+def parse_clu_xml(file, objects_repo: dict[str, list[CluObjectInterface]]) -> CluInterface:
     dom = md.parse(file)
 
     clu = dom.getElementsByTagName("CLU")[0]
@@ -112,11 +112,15 @@ def parse_clu_xml(file) -> CluInterface:
     features = [_parse_feature(x) for x in dom.getElementsByTagName("feature")]
     methods = [_parse_method(x) for x in dom.getElementsByTagName("methods")]
 
-    objects = {}
+
     for obj in dom.getElementsByTagName("object"):
         obj_name = obj.getAttribute("name")
         obj_version = int(obj.getAttribute("version"))
-        objects[obj_name] = obj_version
+        
+        objects = {}
+        for obj_int in objects_repo[obj_name]:
+            if obj_int.version == obj_version:
+                objects[obj_int.obj_class] = obj_int
 
     return CluInterface(name, hw_type, hw_version, fw_type, fw_version, features, methods, objects)
 
@@ -130,34 +134,38 @@ def parse_interfaces(dir):
 
     clus: dict[int, list[CluInterface]] = {}
     modules: dict[int, list[ModuleInterface]] = {}
-    objects: dict[int, list[CluObjectInterface]] = {}
+    objects: dict[str, list[CluObjectInterface]] = {}
 
-    for filename in os.scandir(dir):
-        if filename.is_file():
+    for path in os.scandir(dir):
+        if not path.is_file() or not path.name.startswith("object_"):
+            continue
+        
+        try:
+            with open(path, 'r') as file:
+                obj = parse_clu_object_xml(file)
+                _append_elm(objects, obj.name, obj)
+        except IOError:
+            pass
+
+    for path in os.scandir(dir):
+        if path.is_file():
             try:
-                with open(filename, "r") as file:
-                    if filename.name.startswith("clu_"):
-                        clu = parse_clu_xml(file)
+                with open(path, "r") as file:
+                    if path.name.startswith("clu_"):
+                        clu = parse_clu_xml(file, objects)
                         _append_elm(clus, clu.hw_type, clu)
 
-                    elif filename.name.startswith("module_"):
-                        mod = parse_clu_xml(file)
+                    elif path.name.startswith("module_"):
+                        mod = parse_module_xml(file)
                         _append_elm(modules, mod.hw_type, mod)
-
-                    elif filename.name.startswith("object_"):
-                        obj = parse_clu_xml(file)
-                        _append_elm(obj, obj.hw_type, obj)
 
             except IOError:
                 pass
 
-    for k, v in clus.items():
+    for _, v in clus.items():
         v.sort(key=lambda x: x.fw_api_version)
 
-    for k, v in modules.items():
+    for _, v in modules.items():
         v.sort(key=lambda x: x.fw_api_version)
 
-    for k, v in objects.items():
-        v.sort(key=lambda x: x.version)
-
-    return clus, modules, objects
+    return clus, modules

@@ -1,4 +1,6 @@
 
+import logging
+
 from ..clu_client import CluClient
 from ..gclu import GCLU
 from ..gmodule import GModule
@@ -9,36 +11,39 @@ from .om_parser import parse_om
 
 
 def parse_clu_config(json_confg, om_config, interface_manager: InterfaceManager, clu_client: CluClient) -> GCLU:
-    clu = parse_json(json_confg)
-    names, io_modules, objects = parse_om(om_config)
+    conf_json = parse_json(json_confg)
+    om = parse_om(om_config)
 
-    clu_interface = interface_manager.get_clu_interface(clu.hw_type, clu.fw_api_version)
+    clu_interface = interface_manager.get_clu_interface(conf_json.hw_type, conf_json.fw_api_version)
 
     modules = []
     clu_objects = []
-    #TODO: fix it
-    gclu = GCLU(clu_client, names[], clu, clu_objects, modules)
+    gclu = GCLU(clu_client, om.names[om.this_clu.object_id], conf_json, clu_objects, modules)
 
-    for serial_number, module_objects in io_modules.items():
-        module_config = clu.modules[serial_number]
-        module_interface = interface_manager.get_module_interface(module_config.hw_type, module_config.fw_api_version)
-
-        if module_interface is None:
-            continue #TODO: fix it later
-
+    for sn, mod_objects in om.module_objects.items():
+        mod_conf = conf_json.modules[sn]
+        mod_int = interface_manager.get_module_interface(mod_conf.hw_type, mod_conf.fw_api_version)
+        
+        if mod_int is None:
+            logging.warn("Missing module interface. hw_type: %d, fw_api_version: %d", mod_conf.hw_type, mod_conf.fw_api_version)
+            continue
+        
         gobjects = []
-        for obj_id, obj_type, _ in module_objects:
-            obj_interface = module_interface.objects[obj_type]
-            obj_name = names[obj_id]
-
-            obj = GObject(gclu, obj_name, obj_id, obj_interface)
-            gobjects.append(obj)
-
-        module = GModule(gclu, module_interface.name, module_config, gobjects)
-        modules.append(module)
-
-    #TODO: parse objects
-    for obj_id, obj_class in objects:
-        clu_interface.objects[obj_class] #ale tu jest burdel
+        for obj in mod_objects:
+            obj_int = mod_int.objects[obj.object_type]
+            obj_name = om.names[obj.object_id]
+            
+            gobj = GObject(gclu, obj_name, obj.object_id, obj_int)
+            gobjects.append(gobj)
+        
+        gmodule = GModule(gclu, mod_int.name, mod_conf, gobjects)
+        modules.append(gmodule)
+        
+    for clu_obj in om.clu_objects:
+        obj_int = clu_interface.objects[clu_obj.object_type]
+        obj_name = om.names[obj.object_id]
+        
+        gclu_obj = GObject(gclu, obj_name, clu_obj.object_id, obj_int)
+        clu_objects.append(gclu_obj)
 
     return gclu

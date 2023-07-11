@@ -76,4 +76,4 @@ class CluInterface:
     features: list[FeatureInterface] = field(default_factory=list)
     methods: list[MethodInterface] = field(default_factory=list)
 
-    objects: dict[str, CluObjectInterface] = field(default_factory=dict)
+    objects: dict[int, CluObjectInterface] = field(default_factory=dict)

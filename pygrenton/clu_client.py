@@ -102,7 +102,7 @@ class CluClient:
     def _appendQueue(self, msg: str):
         with self._msg_condition:
             resp_event = threading.Event()
-            resp_token = msg + str(random.randint(0, 1000000)) #TODO: come up with sth better
+            resp_token = hash((msg, random.random()))
 
             self._msg_queue.put((msg, resp_event, resp_token))
             self._msg_condition.notify_all()

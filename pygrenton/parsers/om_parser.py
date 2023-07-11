@@ -95,5 +95,4 @@ def parse_om(file) -> OMEndpoints:
                     module_objects[parent_serial_number] = [ModuleObject(obj_id, obj_class, parent_serial_number, index)]
 
     return OMEndpoints(this_clu, external_clus, names, clu_objects, module_objects)
-
-                
+           
