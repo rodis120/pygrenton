@@ -10,9 +10,15 @@ class CallType(Enum):
 class DataType(Enum):
     VOID = "void"
     NUMBER = "num"
+    INTEGER = "int"
     ENUM = "enum"
     STRING = "str"
+    TABLE = "table"
+    TIMESTAMP = "timestamp"
+    CONFIRMATION = "confirmation"
+    NONE = ""
 
 class ModuleObjectType(Enum):
+    NONE = "none"
     OUT = "out"
     IN = "in"

@@ -5,8 +5,8 @@ from ipaddress import IPv4Address
 from dataclasses import dataclass, field
 
 _NAME_FIELD = re.compile("-- NAME_.*")
-_SPLIT_ARGS = re.compile("[ =,]*")
-_OBJECT_CREATION = re.compile('/.*[^"]OBJECT:new\(.*?\)[^"\n]*/g')
+_SPLIT_ARGS = re.compile("[ =,\n]+")
+_OBJECT_CREATION = re.compile('.*[^"]OBJECT:new\(.*?\)[^"\n]*')
 
 @dataclass
 class CLU:
@@ -16,7 +16,7 @@ class CLU:
 @dataclass
 class CLUObject:
     object_id: str
-    object_type: int
+    object_class: int
     
 @dataclass
 class ModuleObject(CLUObject):
@@ -32,9 +32,15 @@ class OMEndpoints:
     
     clu_objects: list[CLUObject] = field(default_factory=list)
     module_objects: dict[int, list[ModuleObject]] = field(default_factory=list)
+    
+    def getName(self, object_id) -> str:
+        if object_id not in self.names.keys():
+            return f"UNNAMED_OBJECT_{object_id}"
+        
+        return self.names[object_id]
 
 def _parse_name(line: str) -> tuple[str, str]:
-    spl = re.split(_SPLIT_ARGS, line)[-2:]
+    spl = re.split(_SPLIT_ARGS, line)[2:]
 
     name = spl[0]
     object_id = spl[1]
@@ -42,7 +48,7 @@ def _parse_name(line: str) -> tuple[str, str]:
     return object_id, name
 
 def _parse_object_creation(line: str) -> tuple[str, list[str]]:
-    obj_id = line.split(" ", 1)[0]
+    obj_id = line.split()[0]
     args = line[line.find("(")+1:line.rfind(")")].split(", ")
     
     return obj_id, args
@@ -55,7 +61,7 @@ def parse_om(file) -> OMEndpoints:
     module_objects: dict[int, list[ModuleObject]] = {}
     clu_objects: list[CLUObject] = []
     
-    this_clu: CLU
+    this_clu: CLU = None
     external_clus: list[CLU] = []
             
     for line in file:
@@ -78,7 +84,7 @@ def parse_om(file) -> OMEndpoints:
                 if int(args[0]) == 1:
                     external_clus.append(CLU(obj_id, ip_address))
                 else:
-                    main_clu = CLU(obj_id, ip_address)
+                    this_clu = CLU(obj_id, ip_address)
                 
             elif argcount == 4:
                 # parse module object

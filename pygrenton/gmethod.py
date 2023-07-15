@@ -1,13 +1,14 @@
 
 import asyncio
 
-from .gobject import GObject
+from .clu_client import CluClient
 from .interfaces import MethodInterface, ParameterInterface
 from .types import CallType, DataType
 
 
 class GMethod:
-    _gobject: GObject
+    _clu_client: CluClient
+    _object_id: str
     _name: str
     _index: int
     _call_type: CallType
@@ -17,18 +18,15 @@ class GMethod:
     _return_type: DataType
     _unit: str | None
     
-    def __init__(self, gobject: GObject, interface: MethodInterface) -> None:
-        self._gobject = gobject
+    def __init__(self, clu_client: CluClient, object_id: str, interface: MethodInterface) -> None:
+        self._clu_client = clu_client
+        self._object_id = object_id
         self._name = interface.name
         self._index = interface.index
         self._call_type = interface.call
         self._params = interface.parameters
         self._return_type = interface.return_type
         self._unit = interface.unit
-
-    @property
-    def parent(self) -> GObject:
-        return self._gobject
 
     @property
     def name(self) -> str:
@@ -61,17 +59,17 @@ class GMethod:
         for arg, intr in zip(args, self._params):
             
             if intr.data_type == DataType.NUMBER:
-                if not isinstance(arg, int) or not isinstance(arg, float):
+                if not (isinstance(arg, int) or isinstance(arg, float)):
                     raise ValueError(f"\"{type(arg)}\" is incorrect type for argument \"{intr.name}\". Expected a number")
             elif intr.data_type == DataType.STRING and not isinstance(arg, str):
                 raise ValueError(f"\"{type(arg)}\" is incorrect type for argument \"{intr.name}\". Expected a string")
 
         if self._call_type == CallType.EXECUTE:
-            return await self._gobject.execute_method_async(self._index, args)
+            return await self._clu_client.execute_method_async(self._object_id, self._index, *args)
         if self._call_type == CallType.GET:
-            return await self._gobject.get_value_async(self._index)
+            return await self._clu_client.get_value_async(self._object_id, self._index)
         if self._call_type == CallType.SET:
-            await self._gobject.set_value_async(self._index, args[0])
+            await self._clu_client.set_value_async(self._object_id, self._index, args[0])
 
     def execute_method(self, *args):
-        return asyncio.get_event_loop().run_until_complete(self.execute_method_async(args))
+        return asyncio.get_event_loop().run_until_complete(self.execute_method_async(*args))

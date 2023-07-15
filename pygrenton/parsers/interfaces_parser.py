@@ -1,10 +1,12 @@
 
 import os
+import re
 import xml.dom.minidom as md
 from xml.dom.minidom import Element
 
 from ..interfaces import *
 
+VALUE_RANGE_TEMPLATE = re.compile(r"\d+\s*-\s*\d+")
 
 def _parse_feature(elm: Element) -> FeatureInterface:
     name = elm.getAttribute("name")
@@ -15,11 +17,13 @@ def _parse_feature(elm: Element) -> FeatureInterface:
     unit = elm.getAttribute("unit")
 
     value_range = None
-    if elm.hasAttribute("range"):
-        value_range = tuple(int(i) for i in elm.getAttribute("range").split("-"))
+    vr = elm.getAttribute("range")
+    if VALUE_RANGE_TEMPLATE.match(vr):
+        value_range = tuple(int(x) for x in elm.getAttribute("range").split("-"))
 
     enum = None
-    if elm.hasAttribute("enum"):
+    en = elm.getAttribute("enum")
+    if en != "":
         if data_type == DataType.STRING:
             enum = [s for s in elm.getAttribute("enum").split(",")]
         elif data_type == DataType.NUMBER:
@@ -33,11 +37,13 @@ def _parse_parameter(elm: Element) -> ParameterInterface:
     unit = elm.getAttribute("unit")
 
     value_range = None
-    if elm.hasAttribute("range"):
+    vr = elm.getAttribute("range")
+    if VALUE_RANGE_TEMPLATE.match(vr):
         value_range = tuple(int(x) for x in elm.getAttribute("range").split("-"))
 
     enum = None
-    if elm.hasAttribute("enum"):
+    en = elm.getAttribute("enum")
+    if en != "":
         if data_type == DataType.STRING:
             enum = [s for s in elm.getAttribute("enum").split(",")]
         elif data_type == DataType.NUMBER:
@@ -63,7 +69,7 @@ def _parse_module_object(xml: Element) -> ModuleObjectInterface:
     obj_type = ModuleObjectType(xml.getAttribute("type"))
 
     features = [_parse_feature(x) for x in xml.getElementsByTagName("feature")]
-    methods = [_parse_method(x) for x in xml.getElementsByTagName("methods")]
+    methods = [_parse_method(x) for x in xml.getElementsByTagName("method")]
 
     return ModuleObjectInterface(name, obj_class, obj_type, features, methods)
 
@@ -76,7 +82,7 @@ def parse_clu_object_xml(file) -> CluObjectInterface:
     version = int(obj.getAttribute("version"))
 
     features = [_parse_feature(xml) for xml in dom.getElementsByTagName("feature")]
-    methods = [_parse_method(xml) for xml in dom.getElementsByTagName("methods")]
+    methods = [_parse_method(xml) for xml in dom.getElementsByTagName("method")]
 
     return CluObjectInterface(name, obj_class, version, features, methods)
 
@@ -95,7 +101,7 @@ def parse_module_xml(file) -> ModuleInterface:
 
     for obj_xml in dom.getElementsByTagName("object"):
         obj = _parse_module_object(obj_xml)
-        objects[obj.obj_type]
+        objects[obj.obj_class] = obj
 
     return ModuleInterface(name, hw_type, fw_type, fw_api_version, objects)
 
@@ -110,23 +116,22 @@ def parse_clu_xml(file, objects_repo: dict[str, list[CluObjectInterface]]) -> Cl
     fw_version = int(clu.getAttribute("firmwareVersion"), 16)
 
     features = [_parse_feature(x) for x in dom.getElementsByTagName("feature")]
-    methods = [_parse_method(x) for x in dom.getElementsByTagName("methods")]
+    methods = [_parse_method(x) for x in dom.getElementsByTagName("method")]
 
-
+    objects = {}
     for obj in dom.getElementsByTagName("object"):
         obj_name = obj.getAttribute("name")
         obj_version = int(obj.getAttribute("version"))
         
-        objects = {}
         for obj_int in objects_repo[obj_name]:
             if obj_int.version == obj_version:
                 objects[obj_int.obj_class] = obj_int
 
     return CluInterface(name, hw_type, hw_version, fw_type, fw_version, features, methods, objects)
 
-def _append_elm(dict, key, val):
+def _append_elm(dict: dict, key, val):
     if key in dict:
-        dict[key] += val
+        dict[key].append(val)
     else:
         dict[key] = [val]
 
@@ -141,7 +146,7 @@ def parse_interfaces(dir):
             continue
         
         try:
-            with open(path, 'r') as file:
+            with open(path, 'r', encoding="utf-8") as file:
                 obj = parse_clu_object_xml(file)
                 _append_elm(objects, obj.name, obj)
         except IOError:
@@ -150,7 +155,7 @@ def parse_interfaces(dir):
     for path in os.scandir(dir):
         if path.is_file():
             try:
-                with open(path, "r") as file:
+                with open(path, "r", encoding="utf-8") as file:
                     if path.name.startswith("clu_"):
                         clu = parse_clu_xml(file, objects)
                         _append_elm(clus, clu.hw_type, clu)

@@ -34,7 +34,7 @@ class CluClient:
     def client_ip(self) -> str:
         return self._local_ip
 
-    async def send_request_async(self, msg: str):
+    async def send_request_async(self, msg: str) -> str:
         event, resp_token = self._appendQueue(msg)
 
         event.wait()
@@ -50,7 +50,7 @@ class CluClient:
 
     async def get_value_async(self, object_id: str, index: int):
         req_id = self._generate_id_hex()
-        payload = f"req:{self._local_ip}:{req_id}:get({index})"
+        payload = f"req:{self._local_ip}:{req_id}:{object_id}:get({index})"
 
         resp = await self.send_request_async(payload)
 
@@ -62,14 +62,14 @@ class CluClient:
         elif resp in ["true", "false"]:
             return resp == "true"
         else:
-            return None
+            return resp
 
     def get_value(self, object_id: str, index: int):
         return asyncio.get_event_loop().run_until_complete(self.get_value_async(object_id, index))
 
     async def set_value_async(self, object_id: str, index: int, value) -> None:
         req_id = self._generate_id_hex()
-        payload = f"req:{self._local_ip}:{req_id}:set({index},{value})"
+        payload = f"req:{self._local_ip}:{req_id}:{object_id}:set({index},{value})"
 
         await self.send_request_async(payload)
 
@@ -91,7 +91,7 @@ class CluClient:
         elif resp in ["true", "false"]:
             return resp == "true"
         else:
-            return None
+            return resp
 
     def execute_method(self, object_id, index, *args):
         return asyncio.get_event_loop().run_until_complete(self.execute_method_async(object_id, index, args))

@@ -28,8 +28,8 @@ class GObject:
         elif isinstance(interface, ModuleObjectInterface):
             self._obj_type = interface.obj_type
 
-        self._features = [GFeature(self, fint) for fint in interface.features]
-        self._methods = [GMethod(self, mint) for mint in interface.methods]
+        self._features = [GFeature(clu_client, object_id, fint) for fint in interface.features]
+        self._methods = [GMethod(clu_client, object_id, mint) for mint in interface.methods]
 
     @property
     def clu_client(self) -> CluClient:
