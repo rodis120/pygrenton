@@ -2,17 +2,15 @@
 import logging
 
 from ..clu_client import CluClient
+from ..config_objects import CLUConfig
 from ..gobject import GObject
-from ..interfaces import CluInterface, CluObjectInterface, ModuleObjectInterface
 from ..interface_manager import InterfaceManager
-from .config_json_parser import parse_json
-from .om_parser import parse_om
+from ..interfaces import ModuleObjectInterface
 from ..types import ModuleObjectType
+from .om_parser import OMEndpoints
 
-def parse_clu_config(json_confg, om_config, interface_manager: InterfaceManager, clu_client: CluClient) -> list[GObject]:
-    conf_json = parse_json(json_confg)
-    om = parse_om(om_config)
 
+def parse_clu_config(conf_json: CLUConfig, om: OMEndpoints, interface_manager: InterfaceManager, clu_client: CluClient) -> list[GObject]:
     clu_interface = interface_manager.get_clu_interface(conf_json.hw_type, conf_json.fw_type, conf_json.fw_api_version)
 
     objects = []

@@ -64,6 +64,7 @@ class GMethod:
             elif intr.data_type == DataType.STRING and not isinstance(arg, str):
                 raise ValueError(f"\"{type(arg)}\" is incorrect type for argument \"{intr.name}\". Expected a string")
 
+        #TODO: implement data type conversion based on return_type
         if self._call_type == CallType.EXECUTE:
             return await self._clu_client.execute_method_async(self._object_id, self._index, *args)
         if self._call_type == CallType.GET:

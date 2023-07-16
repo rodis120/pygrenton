@@ -8,6 +8,7 @@ class CallType(Enum):
     SET = "set"
 
 class DataType(Enum):
+    #TODO: make data types more generic
     VOID = "void"
     NUMBER = "num"
     INTEGER = "int"

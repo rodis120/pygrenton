@@ -1,15 +1,15 @@
 
-import logging
 import io
+import logging
 import os
 import pickle
 import re
-import requests
 from zipfile import ZipFile
 
-from .parsers.interfaces_parser import parse_interfaces
-from .interfaces import CluInterface, ModuleInterface
+import requests
 
+from .interfaces import CluInterface, ModuleInterface
+from .parsers.interfaces_parser import parse_interfaces
 
 _OM_INTERFACES_ENDPOINT = "http://om.grenton.com/interfaces/v4/"
 _OM_NEWEST_INTERFACES = "device-interfaces.current"
@@ -55,6 +55,8 @@ def _download_interfaces(version, interfaces_dir):
     
 class InterfaceManager:
     #TODO: maybe create database for intefaces
+    _clus: list[CluInterface]
+    _modules: list[ModuleInterface]
 
     def __init__(self, interfaces_dir: str) -> None:
         self._dir = interfaces_dir

@@ -6,7 +6,14 @@ import threading
 
 from .cipher import GrentonCypher
 
-
+def _extract_payload(resp: str) -> str:
+    count = 0
+    for char, index in zip(resp, range(len(resp))):
+        if char == ':':
+            count += 1
+            if count == 3:
+                return resp[index + 1:]
+            
 class CluClient:
 
     def __init__(self, ip: str, port: int, cipher: GrentonCypher, timeout: float = 1) -> None:
@@ -54,15 +61,7 @@ class CluClient:
 
         resp = await self.send_request_async(payload)
 
-        resp = resp.split(":").pop()
-        if resp.isdecimal():
-            return float(resp)
-        elif resp.startswith("\"") and resp.endswith("\""):
-            return resp[1:len(resp)]
-        elif resp in ["true", "false"]:
-            return resp == "true"
-        else:
-            return resp
+        return _extract_payload(resp)
 
     def get_value(self, object_id: str, index: int):
         return asyncio.get_event_loop().run_until_complete(self.get_value_async(object_id, index))
@@ -83,15 +82,7 @@ class CluClient:
 
         resp = await self.send_request_async(payload)
 
-        resp = resp.split(":").pop()
-        if resp.isdecimal():
-            return float(resp)
-        elif resp.startswith("\"") and resp.endswith("\""):
-            return resp[1:len(resp)]
-        elif resp in ["true", "false"]:
-            return resp == "true"
-        else:
-            return resp
+        return _extract_payload(resp)
 
     def execute_method(self, object_id, index, *args):
         return asyncio.get_event_loop().run_until_complete(self.execute_method_async(object_id, index, args))

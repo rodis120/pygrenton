@@ -13,7 +13,7 @@ def _parse_feature(elm: Element) -> FeatureInterface:
     index = int(elm.getAttribute("index"))
     get = elm.getAttribute("get") == "true"
     set = elm.getAttribute("set") == "true"
-    data_type = DataType(elm.getAttribute("type"))
+    data_type = DataType(elm.getAttribute("type")) #TODO: make data type more generic
     unit = elm.getAttribute("unit")
 
     value_range = None
@@ -56,6 +56,7 @@ def _parse_method(elm: Element) -> MethodInterface:
     index = int(elm.getAttribute("index"))
     name = elm.getAttribute("name")
 
+    # make return type more generic
     return_value = DataType(elm.getAttribute("return"))
 
     params = [_parse_parameter(par) for par in elm.getElementsByTagName("param")]

@@ -7,9 +7,17 @@ from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
 class GrentonCypher:
 
-    def __init__(self, key: str, iv: str) -> None:
-        self._key = b64decode(key)
-        self._iv = b64decode(iv)
+    def __init__(self, key: str | bytes, iv: str | bytes) -> None:
+        if isinstance(key, str):
+            self._key = b64decode(key)
+        else:
+            self._key = key
+            
+        if isinstance(iv, str):
+            self._iv = b64decode(iv)
+        else:
+            self._iv = iv
+            
         self._padding = padding.PKCS7(128)
         self._cypher = Cipher(
             algorithms.AES(self._key), modes.CBC(self._iv), backend=default_backend()
