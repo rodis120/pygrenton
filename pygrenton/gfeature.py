@@ -68,8 +68,9 @@ class GFeature:
         if not self._gettable:
             raise FeatureNotGettableError(self._name)
 
-        # TODO: implement data type conversion based on data_type
-        return await self._clu_client.get_value_async(self._object_id, self._index)
+        value = await self._clu_client.get_value_async(self._object_id, self._index)
+        
+        return self.data_type.convert_value(value)
 
     def get_value(self):
         return asyncio.get_event_loop().run_until_complete(self.get_value_async())

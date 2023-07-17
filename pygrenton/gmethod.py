@@ -64,13 +64,15 @@ class GMethod:
             elif intr.data_type == DataType.STRING and not isinstance(arg, str):
                 raise ValueError(f"\"{type(arg)}\" is incorrect type for argument \"{intr.name}\". Expected a string")
 
-        #TODO: implement data type conversion based on return_type
-        if self._call_type == CallType.EXECUTE:
-            return await self._clu_client.execute_method_async(self._object_id, self._index, *args)
-        if self._call_type == CallType.GET:
-            return await self._clu_client.get_value_async(self._object_id, self._index)
+        value = None
         if self._call_type == CallType.SET:
-            await self._clu_client.set_value_async(self._object_id, self._index, args[0])
+            return await self._clu_client.set_value_async(self._object_id, self._index, args[0])
+        elif self._call_type == CallType.GET:
+            value = await self._clu_client.get_value_async(self._object_id, self._index)
+        else:
+            value = await self._clu_client.execute_method_async(self._object_id, self._index, *args)
+         
+        return self.return_type.convert_value(value)
 
     def execute_method(self, *args):
         return asyncio.get_event_loop().run_until_complete(self.execute_method_async(*args))

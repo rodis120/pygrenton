@@ -1,4 +1,5 @@
 
+from datetime import datetime
 from enum import Enum
 
 
@@ -18,7 +19,16 @@ class DataType(Enum):
     TIMESTAMP = "timestamp"
     CONFIRMATION = "confirmation"
     NONE = ""
-
+    
+    def convert_value(self, var):
+        if self.value == DataType.NUMBER:
+            return float(var)
+        elif self.value == DataType.INTEGER:
+            return int(var)
+        elif self.value == DataType.TIMESTAMP:
+            return datetime.fromtimestamp(float(var))
+        else:
+            return var
 class ModuleObjectType(Enum):
     NONE = "none"
     OUT = "out"
