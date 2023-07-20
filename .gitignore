@@ -129,3 +129,5 @@ dmypy.json
 .pyre/
 
 /test.py
+pygrenton_cache/
+tmp.prof

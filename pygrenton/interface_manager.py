@@ -1,7 +1,6 @@
 
 import io
 import logging
-import os
 import pickle
 import re
 from zipfile import ZipFile
@@ -24,48 +23,41 @@ def _get_newest_verion() -> str:
 
 def _get_current_version(dir) -> str | None:
     try:
-        version_file = open(dir + "/version.txt", "r")
+        version_file = open(dir + "/interfaces-version.txt", "r")
         return version_file.readline()
     except IOError:
         return None
     
-def _download_interfaces(version, interfaces_dir):
+def _download_interfaces(version, directory) -> None:
     resp = requests.get(_OM_INTERFACES_ENDPOINT + version)
     
     if len(resp.content) == 0:
         logging.error("Unable to download interfaces.")
         return
     
-    if not os.path.isdir(interfaces_dir):
-        os.mkdir(interfaces_dir)
-    
     try:
         with ZipFile(io.BytesIO(resp.content)) as zip:
-            for name in zip.namelist():
-                fname = name.split("/")[1]
-                if fname == "":
-                    continue
-                with open(interfaces_dir + "/" + fname, "wb+") as f:
-                    f.write(zip.read(name))
+            zip.extractall(directory)
             
-        with open(interfaces_dir + "/version.txt", "w") as version_file:
+        with open(directory + "/interfaces-version.txt", "w") as version_file:
             version_file.write(version)
     except IOError as e:
         logging.error("Unable to save interfaces. Error message: %s", e.strerror)
     
 class InterfaceManager:
     #TODO: maybe create database for intefaces
-    _clus: list[CluInterface]
-    _modules: list[ModuleInterface]
+    _clus: list[CluInterface] = None
+    _modules: list[ModuleInterface] = None
 
-    def __init__(self, interfaces_dir: str) -> None:
-        self._dir = interfaces_dir
+    def __init__(self, cache_dir: str) -> None:
+        self._dir = cache_dir
 
-        current_version = _get_current_version(interfaces_dir)
+        current_version = _get_current_version(cache_dir)
         newest_version = _get_newest_verion()
         
         if current_version != newest_version and newest_version is not None:
-            _download_interfaces(newest_version, interfaces_dir)
+            _download_interfaces(newest_version, cache_dir)
+            self._parse_interfaces()
             self._save_interface_cache()
         else:
             try:
@@ -98,7 +90,7 @@ class InterfaceManager:
         return mod_list[-1]
     
     def _parse_interfaces(self) -> None:
-        clus, modules = parse_interfaces(self._dir)
+        clus, modules = parse_interfaces(self._dir + "/device-interfaces")
         self._clus = clus
         self._modules = modules
         self._save_interface_cache()
