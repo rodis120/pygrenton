@@ -5,15 +5,13 @@ from .clu_client import CluClient
 from .gfeature import GFeature
 from .gmethod import GMethod
 from .interfaces import CluInterface, CluObjectInterface, ModuleObjectInterface
-from .types import ModuleObjectType
 
 
 class GObject:
     _clu_client: CluClient
     _name: str
     _object_id: str
-    _version: int | None
-    _obj_type: ModuleObjectType | None
+    _obj_class: int
 
     _features: list[GFeature]
     _methods: list[GMethod]
@@ -22,11 +20,11 @@ class GObject:
         self._clu_client = clu_client
         self._name = name
         self._object_id = object_id
-
-        if isinstance(interface, CluObjectInterface):
-            self._version = interface.version
-        elif isinstance(interface, ModuleObjectInterface):
-            self._obj_type = interface.obj_type
+        
+        if isinstance(interface, CluInterface):
+            self._obj_class = 0
+        else:
+            self._obj_class = interface.obj_class
 
         self._features = [GFeature(clu_client, object_id, fint) for fint in interface.features]
         self._methods = [GMethod(clu_client, object_id, mint) for mint in interface.methods]
@@ -44,12 +42,8 @@ class GObject:
         return self._object_id
 
     @property
-    def version(self) -> int | None:
-        return self._version
-
-    @property
-    def object_type(self) -> ModuleObjectType | None:
-        return self._obj_type
+    def object_class(self) -> int:
+        return self._obj_class
 
     @property
     def features(self) -> list[GFeature]:
