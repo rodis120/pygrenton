@@ -31,6 +31,12 @@ class GrentonApi:
         self._download_config()
         self._parse_config()
         
+    async def check_alive_async(self) -> int:
+        return await self._clu_client.check_alive_async()
+    
+    def check_alive(self) -> int:
+        return self._clu_client.check_alive()
+        
     def _download_config(self) -> None:
         try:
             tftp_client = tftpy.TftpClient(self._ipaddress, 69, options={"tsize": 0})
