@@ -8,11 +8,13 @@ from .cipher import GrentonCypher
 
 def _extract_payload(resp: str) -> str:
     count = 0
-    for char, index in zip(resp, range(len(resp))):
+    for index, char in enumerate(resp):
         if char == ':':
             count += 1
             if count == 3:
                 return resp[index + 1:]
+            
+    return resp #just in case
             
 class CluClient:
 
@@ -54,6 +56,17 @@ class CluClient:
 
     def send_request(self, msg: str):
         return asyncio.get_event_loop().run_until_complete(self.send_request_async(msg))
+    
+    async def check_alive_async(self) -> int:
+        req_id = self._generate_id_hex()
+        payload = f"req:{self._local_ip}:{req_id}:checkAlive()"
+        
+        resp = await self.send_request_async(payload)
+        
+        return int(_extract_payload(resp), 16)
+    
+    def check_alive(self) -> int:
+        return asyncio.get_event_loop().run_until_complete(self.check_alive_async())
 
     async def get_value_async(self, object_id: str, index: int):
         req_id = self._generate_id_hex()
@@ -134,4 +147,3 @@ class CluClient:
                 self._responses[resp_token] = e
                 
             resp_event.set()
-
