@@ -46,8 +46,8 @@ def _download_interfaces(version, directory) -> None:
     
 class InterfaceManager:
     #TODO: maybe create database for intefaces
-    _clus: list[CluInterface] = None
-    _modules: list[ModuleInterface] = None
+    _clus: dict[int, list[CluInterface]] = None
+    _modules: dict[int, list[ModuleInterface]] = None
 
     def __init__(self, cache_dir: str) -> None:
         self._dir = cache_dir
