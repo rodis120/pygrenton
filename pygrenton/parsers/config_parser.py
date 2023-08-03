@@ -18,7 +18,11 @@ def parse_clu_config(conf_json: CLUConfig, om: OMEndpoints, interface_manager: I
     objects_by_name: dict[str, GObject] = {}
     
     def add_object(obj: GObject) -> None:
-        objects_by_class.get(obj.object_class, []).append(obj)
+        if obj.object_class in objects_by_class.keys():
+            objects_by_class[obj.object_class].append(obj)
+        else:
+            objects_by_class[obj.object_class] = [obj]
+        
         objects_by_id[obj.object_id] = obj
         objects_by_name[obj.name] = obj
     
