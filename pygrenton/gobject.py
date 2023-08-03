@@ -12,6 +12,7 @@ class GObject:
     _name: str
     _object_id: str
     _obj_class: int
+    _obj_class_name: str = ""
 
     _features: list[GFeature]
     _methods: list[GMethod]
@@ -23,8 +24,10 @@ class GObject:
         
         if isinstance(interface, CluInterface):
             self._obj_class = 0
+            self._obj_class_name = interface.name
         else:
             self._obj_class = interface.obj_class
+            self._obj_class_name = interface.name
 
         self._features = [GFeature(clu_client, object_id, fint) for fint in interface.features]
         self._methods = [GMethod(clu_client, object_id, mint) for mint in interface.methods]
@@ -44,6 +47,10 @@ class GObject:
     @property
     def object_class(self) -> int:
         return self._obj_class
+    
+    @property
+    def object_class_name(self) -> str:
+        return self._obj_class_name
 
     @property
     def features(self) -> list[GFeature]:
