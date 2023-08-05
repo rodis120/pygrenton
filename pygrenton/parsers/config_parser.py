@@ -54,7 +54,7 @@ def parse_clu_config(conf_json: CLUConfig, om: OMEndpoints, interface_manager: I
             logging.warn("Missing clu objectc interface. object_type: %d.", clu_obj.object_class)
             
             empty_interface = CluObjectInterface("unknown", clu_obj.object_class, 0)
-            gobj = GObject(clu_client, om.getName(obj.object_id), obj.object_id, empty_interface)
+            gobj = GObject(clu_client, om.getName(clu_obj.object_id), clu_obj.object_id, empty_interface)
             add_object(gobj)
             continue
         
