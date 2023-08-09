@@ -88,3 +88,9 @@ class GFeature:
 
     def set_value(self, value) -> None:
         asyncio.get_event_loop().run_until_complete(self.set_value_async(value))
+        
+    def register_handler(self, handler) -> None:
+        self._clu_client.register_value_change_handler(self._object_id, self._index, handler)
+
+    def remove_handler(self) -> None:
+        self._clu_client.remove_value_change_handler(self._object_id, self._index)

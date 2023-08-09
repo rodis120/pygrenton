@@ -37,14 +37,14 @@ class GrentonApi:
     _interface_manager: InterfaceManager = None
     _interface_manager_lock: threading.Lock = threading.Lock()
     
-    def __init__(self, ipaddress, key: str | bytes, iv: str | bytes, cache_dir = "pygrenton_cache", timeout: float = 1) -> None:
+    def __init__(self, ipaddress, key: str | bytes, iv: str | bytes, cache_dir = "pygrenton_cache", timeout: float = 1, client_ip: str | None = None) -> None:
         self._ipaddress = ipaddress
         self._cache_dir = cache_dir
         if not os.path.exists(cache_dir):
             os.mkdir(cache_dir)
         
         self._cipher = GrentonCypher(key, iv)
-        self._clu_client = CluClient(ipaddress, 1234, self._cipher, timeout)
+        self._clu_client = CluClient(ipaddress, 1234, self._cipher, timeout, client_ip=client_ip)
         
         with self._interface_manager_lock:
             if self._interface_manager is None:
