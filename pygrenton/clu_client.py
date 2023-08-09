@@ -59,6 +59,8 @@ def _parse_list(msg: str, start: int = 0) -> tuple[int, list]:
             return True
         elif data == "false":
             return False
+        elif data == "nil":
+            return None
         
         return float(data)
     
@@ -276,13 +278,11 @@ class CluClient:
             try:
                 if not is_socket_open:
                     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                    sock.settimeout(self._timeout)
                     is_socket_open = True
                 
-                sock.settimeout(self._timeout)
                 sock.sendto(payload, self._addr)
-                
                 response = sock.recvfrom(1024)[0]
-                sock.close()
                 
                 decrypted = self._cypher.decrypt(response).decode("utf-8")
 
