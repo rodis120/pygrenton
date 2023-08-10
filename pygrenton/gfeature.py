@@ -37,6 +37,10 @@ class GFeature:
         return self._name
 
     @property
+    def parent(self) -> str:
+        return self._object_id
+
+    @property
     def index(self) -> int:
         return self._index
 
