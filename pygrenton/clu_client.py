@@ -103,9 +103,9 @@ def _parse_update_message(msg: str) -> tuple[int, list]:
 
 def _gen_client_id(object_id: str) -> int:
     acc = 0
-    for c in object_id:
-        acc += ord(c)
-        acc *= 10
+    for c in object_id.encode():
+        acc <<= 4
+        acc ^= c    
         
     return acc
 class CluClient:
