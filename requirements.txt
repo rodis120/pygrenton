@@ -1,1 +1,2 @@
-cryptography
+cryptography>=41.0.3
+tftpy==0.8.2
