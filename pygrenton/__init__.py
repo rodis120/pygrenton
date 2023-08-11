@@ -81,12 +81,19 @@ class GrentonApi:
         return self._clu_client.check_alive()
         
     def _download_config(self) -> None:
+        
+        # a trick to speed up the download by ignoring rest of the content of the file
+        def skip_useless_part(data):
+            msg =  data.data.decode()
+            if msg.find("EventsFor") != -1:
+                data.data = data.data[:-1]
+        
         try:
             tftp_client = tftpy.TftpClient(self._ipaddress, 69, options={"tsize": 0})
             self._clu_client.send_request("req_start_ftp")
             time.sleep(0.1)
             tftp_client.download("a:\\CONFIG.JSON", self._cache_dir + "/config.json")
-            tftp_client.download("a:\\om.lua", self._cache_dir + "/om.lua")
+            tftp_client.download("a:\\om.lua", self._cache_dir + "/om.lua", packethook=skip_useless_part)
             self._clu_client.send_request("req_tftp_stop")
         except:
             raise ConfigurationDownloadError
