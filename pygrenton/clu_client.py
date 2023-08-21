@@ -232,7 +232,7 @@ class CluClient:
 
     async def _send_lua_request(self, payload) -> str:
         req_id = _generate_id_hex()
-        payload = f'req:{self._local_ip}:{req_id}:(load("result = {payload} return (type(result) .. \\\":\\\" .. tostring(result))")())'
+        payload = f'req:{self._local_ip}:{req_id}:(load("result = {payload} return (type(result) .. \\\":\\\" .. tostring(result))")())' # basically remote code execution
     
         resp = await self.send_request_async(payload)
         resp = _extract_payload(resp)
