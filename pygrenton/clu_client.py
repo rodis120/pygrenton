@@ -108,6 +108,7 @@ def _gen_client_id(object_id: str) -> int:
         acc ^= c    
         
     return acc
+
 class CluClient:
 
     def __init__(self, ip: str, port: int, cipher: GrentonCypher, timeout: float = 1, registration_update_interval: float = 60, client_ip: str | None = None) -> None:
@@ -172,44 +173,26 @@ class CluClient:
         return asyncio.get_event_loop().run_until_complete(self.send_request_async(msg))
     
     async def check_alive_async(self) -> int:
-        req_id = _generate_id_hex()
-        payload = f"req:{self._local_ip}:{req_id}:checkAlive()"
-        
-        resp = await self.send_request_async(payload)
-        
-        return int(_extract_payload(resp), 16)
+        return await self._send_lua_request("checkAlive()")
     
     def check_alive(self) -> int:
         return asyncio.get_event_loop().run_until_complete(self.check_alive_async())
 
     async def get_value_async(self, object_id: str, index: int):
-        req_id = _generate_id_hex()
-        payload = f"req:{self._local_ip}:{req_id}:{object_id}:get({index})"
-
-        resp = await self.send_request_async(payload)
-
-        return _extract_payload(resp)
+        return await self._send_lua_request(f"{object_id}:get({index})")
 
     def get_value(self, object_id: str, index: int):
         return asyncio.get_event_loop().run_until_complete(self.get_value_async(object_id, index))
 
     async def set_value_async(self, object_id: str, index: int, value) -> None:
-        req_id = _generate_id_hex()
-        payload = f"req:{self._local_ip}:{req_id}:{object_id}:set({index},{value})"
-
-        await self.send_request_async(payload)
+        await self._send_lua_request(f"{object_id}:set({index},{value})")
 
     def set_value(self, object_id: str, index: int, value) -> None:
         asyncio.get_event_loop().run_until_complete(self.set_value_async(object_id, index, value))
 
     async def execute_method_async(self, object_id, index, *args):
-        req_id = _generate_id_hex()
         args_str = ','.join([i for i in args]) if len(args) > 0 else ", 0"
-        payload = f"req:{self._local_ip}:{req_id}:{object_id}:execute({index},{args_str})"
-
-        resp = await self.send_request_async(payload)
-
-        return _extract_payload(resp)
+        return await self._send_lua_request(f"{object_id}:execute({index},{args_str})")
     
     def register_value_change_handler(self, object_id: str, index: int, handler: Callable[[str, int, Any], None]) -> None:
         with self._client_registration_lock:
@@ -246,6 +229,27 @@ class CluClient:
 
     def execute_method(self, object_id, index, *args):
         return asyncio.get_event_loop().run_until_complete(self.execute_method_async(object_id, index, args))
+
+    async def _send_lua_request(self, payload) -> str:
+        req_id = _generate_id_hex()
+        payload = f'req:{self._local_ip}:{req_id}:(load("result = {payload} return (type(result) .. \\\":\\\" .. tostring(result))")())'
+    
+        resp = await self.send_request_async(payload)
+        resp = _extract_payload(resp)
+        
+        i = resp.find(":")
+        
+        resp_type = resp[:i]
+        value = resp[i+1:]
+        
+        if resp_type == "number":
+            return float(value)
+        elif resp_type == "string":
+            return value
+        elif resp_type == "boolean":
+            return value == "true"
+        else:
+            return None
 
     def _create_registration_payload(self, object_id: str) -> str:
         client_id =_gen_client_id(object_id)
