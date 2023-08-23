@@ -111,7 +111,7 @@ def _gen_client_id(object_id: str) -> int:
 
 class CluClient:
 
-    def __init__(self, ip: str, port: int, cipher: GrentonCypher, timeout: float = 1, registration_update_interval: float = 60, client_ip: str | None = None) -> None:
+    def __init__(self, ip: str, port: int, cipher: GrentonCypher, timeout: float = 1, registration_update_interval: float = 60, client_ip: str | None = None, max_connections: int = 6) -> None:
         self._addr = (ip, port)
         self._timeout = timeout
         self._registration_update_interval = registration_update_interval
@@ -121,15 +121,10 @@ class CluClient:
         else:
             self._local_ip = _get_host_ip(ip)
             
-        self._cypher = cipher
-
-        self._responses: dict = {}
-        self._msg_queue: queue.Queue[tuple[str, threading.Event, str]] = queue.Queue()
-
-        self._msg_condition = threading.Condition()
-        self._msg_sender_thread = threading.Thread(target=self._sender_loop, daemon=True)
-        self._msg_sender_thread.start()
+        self._cipher = cipher
         
+        self._request_semaphore = threading.Semaphore(max_connections)
+
         self._client_id_map: dict[int, str] = {}
         self._handler_map: dict[tuple[str, int], Callable[[str, int, Any], None]] = {}
         self._feature_index_map: dict[str, list[int]] = {}
@@ -159,15 +154,21 @@ class CluClient:
         return self._local_ip
 
     def send_request(self, msg: str) -> str:
-        event, resp_token = self._appendQueue(msg)
-
-        event.wait()
-        resp = self._responses.pop(resp_token)
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.settimeout(self._timeout)
         
-        if isinstance(resp, Exception):
-            raise resp
+        payload = self._cipher.encrypt(msg.encode())
         
-        return resp
+        try:
+            with self._request_semaphore:
+                sock.sendto(payload, self._addr)
+                resp, _ = sock.recvfrom(1024)
+                
+            return self._cipher.decrypt(resp).decode()
+        except Exception as e:
+            raise e
+        finally:
+            sock.close()
 
     async def send_request_async(self, msg: str):
         return await asyncio.to_thread(self.send_request, msg)
@@ -257,49 +258,6 @@ class CluClient:
         port = self._update_receiver_port
         payload = f"req:{self._local_ip}:{_generate_id_hex()}:SYSTEM:clientRegister(\"{self._local_ip}\",{port},{client_id},{{{','.join(items)}}})"
         return payload
-
-    def _appendQueue(self, msg: str):
-        with self._msg_condition:
-            resp_event = threading.Event()
-            resp_token = hash((msg, random.random()))
-
-            self._msg_queue.put((msg, resp_event, resp_token))
-            self._msg_condition.notify_all()
-
-            return resp_event, resp_token
-    
-    def _sender_loop(self):
-        is_socket_open = False
-        sock = None
-        
-        while True:
-            with self._msg_condition:
-                self._msg_condition.wait_for(lambda: not self._msg_queue.empty())
-                msg, resp_event, resp_token = self._msg_queue.get()
-
-            payload = self._cypher.encrypt(bytes(msg, "utf-8"))
-
-            try:
-                if not is_socket_open:
-                    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-                    sock.settimeout(self._timeout)
-                    is_socket_open = True
-                
-                sock.sendto(payload, self._addr)
-                response = sock.recvfrom(1024)[0]
-                
-                decrypted = self._cypher.decrypt(response).decode("utf-8")
-
-                self._responses[resp_token] = decrypted
-                
-                if self._msg_queue.empty():
-                    sock.close()
-                    is_socket_open = False
-
-            except Exception as e:
-                self._responses[resp_token] = e
-                
-            resp_event.set()
     
     def _client_registration(self) -> None:
         
@@ -327,7 +285,7 @@ class CluClient:
         while True:
             try:
                 encrypted, _ = self._update_receiver_socket.recvfrom(1024)
-                decrypted = self._cypher.decrypt(encrypted).decode("utf-8")
+                decrypted = self._cipher.decrypt(encrypted).decode("utf-8")
             except:
                 continue
             
