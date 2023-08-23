@@ -6,7 +6,7 @@ import threading
 
 import tftpy
 
-from .cipher import GrentonCypher
+from .cipher import GrentonCipher
 from .clu_client import CluClient
 from .exceptions import ConfigurationDownloadError, ConfigurationParserError
 from .gobject import GObject
@@ -18,7 +18,7 @@ from .parsers.om_parser import parse_om
 
 async def verify_async(ipaddress: str, key: str, iv: str) -> int | None:
     try:
-        cipher = GrentonCypher(ipaddress, key, iv)
+        cipher = GrentonCipher(ipaddress, key, iv)
         clu_client = CluClient(ipaddress, 1234, cipher)
         
         return await clu_client.check_alive_async()
@@ -43,7 +43,7 @@ class GrentonApi:
         if not os.path.exists(cache_dir):
             os.mkdir(cache_dir)
         
-        self._cipher = GrentonCypher(key, iv)
+        self._cipher = GrentonCipher(key, iv)
         self._clu_client = CluClient(ipaddress, 1234, self._cipher, timeout, client_ip=client_ip)
         
         clu_sn = self._clu_client.check_alive()
