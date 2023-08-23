@@ -1,12 +1,11 @@
 import asyncio
-import queue
 import random
 import socket
 import threading
 from collections.abc import Callable
 from typing import Any
 
-from .cipher import GrentonCypher
+from .cipher import GrentonCipher
 
 
 def _get_host_ip(clu_ip: str) -> str:
@@ -111,7 +110,7 @@ def _gen_client_id(object_id: str) -> int:
 
 class CluClient:
 
-    def __init__(self, ip: str, port: int, cipher: GrentonCypher, timeout: float = 1, registration_update_interval: float = 60, client_ip: str | None = None, max_connections: int = 6) -> None:
+    def __init__(self, ip: str, port: int, cipher: GrentonCipher, timeout: float = 1, registration_update_interval: float = 60, client_ip: str | None = None, max_connections: int = 6) -> None:
         self._addr = (ip, port)
         self._timeout = timeout
         self._registration_update_interval = registration_update_interval
