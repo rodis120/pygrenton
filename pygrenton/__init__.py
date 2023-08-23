@@ -96,7 +96,7 @@ class GrentonApi:
         try:
             tftp_client = tftpy.TftpClient(self._ipaddress, 69, options={"tsize": 0})
             self._clu_client.send_request("req_start_ftp")
-            time.sleep(0.1)
+            time.sleep(0.01)
             tftp_client.download("a:\\CONFIG.JSON", os.path.join(self._config_cache_dir, "config.json"))
             tftp_client.download("a:\\om.lua", os.path.join(self._config_cache_dir, "om.lua"), packethook=skip_useless_part)
             self._clu_client.send_request("req_tftp_stop")
