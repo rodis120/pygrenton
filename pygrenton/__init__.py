@@ -46,6 +46,11 @@ class GrentonApi:
         self._cipher = GrentonCypher(key, iv)
         self._clu_client = CluClient(ipaddress, 1234, self._cipher, timeout, client_ip=client_ip)
         
+        clu_sn = self._clu_client.check_alive()
+        self._config_cache_dir = os.path.join(cache_dir, str(clu_sn))
+        if not os.path.exists(self._config_cache_dir):
+            os.mkdir(self._config_cache_dir)
+        
         with self._interface_manager_lock:
             if self._interface_manager is None:
                 GrentonApi._interface_manager = InterfaceManager(cache_dir)
@@ -92,8 +97,8 @@ class GrentonApi:
             tftp_client = tftpy.TftpClient(self._ipaddress, 69, options={"tsize": 0})
             self._clu_client.send_request("req_start_ftp")
             time.sleep(0.1)
-            tftp_client.download("a:\\CONFIG.JSON", self._cache_dir + "/config.json")
-            tftp_client.download("a:\\om.lua", self._cache_dir + "/om.lua", packethook=skip_useless_part)
+            tftp_client.download("a:\\CONFIG.JSON", os.path.join(self._config_cache_dir, "config.json"))
+            tftp_client.download("a:\\om.lua", os.path.join(self._config_cache_dir, "om.lua"), packethook=skip_useless_part)
             self._clu_client.send_request("req_tftp_stop")
         except:
             raise ConfigurationDownloadError
@@ -102,9 +107,9 @@ class GrentonApi:
         try:
             config_json = None
             om = None
-            with open(self._cache_dir + "/config.json", "r") as f:
+            with open(os.path.join(self._config_cache_dir, "config.json"), "r") as f:
                 config_json = parse_json(f)
-            with open(self._cache_dir + "/om.lua", "r") as f:
+            with open(os.path.join(self._config_cache_dir, "om.lua"), "r") as f:
                 om = parse_om(f)
                 
             self._objects_by_class, self._objects_by_id, self._objects_by_name = parse_clu_config(config_json, om, self._interface_manager, self._clu_client)
