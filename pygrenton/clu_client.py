@@ -158,7 +158,7 @@ class CluClient:
     def client_ip(self) -> str:
         return self._local_ip
 
-    async def send_request_async(self, msg: str) -> str:
+    def send_request(self, msg: str) -> str:
         event, resp_token = self._appendQueue(msg)
 
         event.wait()
@@ -169,30 +169,33 @@ class CluClient:
         
         return resp
 
-    def send_request(self, msg: str):
-        return asyncio.get_event_loop().run_until_complete(self.send_request_async(msg))
-    
-    async def check_alive_async(self) -> int:
-        return await self._send_lua_request("checkAlive()")
+    async def send_request_async(self, msg: str):
+        return await asyncio.to_thread(self.send_request, msg)
     
     def check_alive(self) -> int:
-        return asyncio.get_event_loop().run_until_complete(self.check_alive_async())
-
-    async def get_value_async(self, object_id: str, index: int):
-        return await self._send_lua_request(f"{object_id}:get({index})")
+        return int(self._send_lua_request("checkAlive()"), 16)
+    
+    async def check_alive_async(self) -> int:
+        return await asyncio.to_thread(self.check_alive)
 
     def get_value(self, object_id: str, index: int):
-        return asyncio.get_event_loop().run_until_complete(self.get_value_async(object_id, index))
+        return self._send_lua_request(f"{object_id}:get({index})")
 
-    async def set_value_async(self, object_id: str, index: int, value) -> None:
-        await self._send_lua_request(f"{object_id}:set({index},{value})")
+    async def get_value_async(self, object_id: str, index: int):
+        return await asyncio.to_thread(self.get_value, object_id, index)
 
     def set_value(self, object_id: str, index: int, value) -> None:
-        asyncio.get_event_loop().run_until_complete(self.set_value_async(object_id, index, value))
+        self._send_lua_request(f"{object_id}:set({index},{value})")
 
-    async def execute_method_async(self, object_id, index, *args):
+    async def set_value_async(self, object_id: str, index: int, value) -> None:
+        await asyncio.to_thread(self.set_value, object_id, index, value)
+
+    def execute_method(self, object_id, index, *args):
         args_str = ','.join([i for i in args]) if len(args) > 0 else ", 0"
-        return await self._send_lua_request(f"{object_id}:execute({index},{args_str})")
+        return self._send_lua_request(f"{object_id}:execute({index},{args_str})")
+    
+    async def execute_method_async(self, object_id, index, *args):
+        return await asyncio.to_thread(self.execute_method, object_id, index, *args)
     
     def register_value_change_handler(self, object_id: str, index: int, handler: Callable[[str, int, Any], None]) -> None:
         with self._client_registration_lock:
@@ -227,14 +230,11 @@ class CluClient:
             
             self._handler_map.pop((object_id, index))
 
-    def execute_method(self, object_id, index, *args):
-        return asyncio.get_event_loop().run_until_complete(self.execute_method_async(object_id, index, args))
-
-    async def _send_lua_request(self, payload) -> str:
+    def _send_lua_request(self, payload) -> str:
         req_id = _generate_id_hex()
         payload = f'req:{self._local_ip}:{req_id}:(load("result = {payload} return (type(result) .. \\\":\\\" .. tostring(result))")())' # basically remote code execution
     
-        resp = await self.send_request_async(payload)
+        resp = self.send_request(payload)
         resp = _extract_payload(resp)
         
         i = resp.find(":")
