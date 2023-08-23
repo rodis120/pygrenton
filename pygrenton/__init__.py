@@ -16,17 +16,17 @@ from .parsers.config_parser import parse_clu_config
 from .parsers.om_parser import parse_om
 
 
-async def verify_async(ipaddress: str, key: str, iv: str) -> int | None:
+def verify(ipaddress: str, key: str, iv: str) -> int | None:
     try:
         cipher = GrentonCipher(ipaddress, key, iv)
         clu_client = CluClient(ipaddress, 1234, cipher)
         
-        return await clu_client.check_alive_async()
+        return clu_client.check_alive_async()
     except:
         return None
 
-def verify(ipaddress: str, key: str, iv: str) -> int | None:
-    return asyncio.get_event_loop().run_until_complete(ipaddress, key, iv)
+async def verify_async(ipaddress: str, key: str, iv: str) -> int | None:
+    return await asyncio.to_thread(verify, ipaddress, key, iv)
 
 class GrentonApi:
     
