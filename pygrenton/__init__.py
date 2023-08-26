@@ -1,8 +1,8 @@
 
 import asyncio
 import os
-import time
 import threading
+import time
 
 import tftpy
 
@@ -12,7 +12,7 @@ from .exceptions import ConfigurationDownloadError, ConfigurationParserError
 from .gobject import GObject
 from .interface_manager import InterfaceManager
 from .parsers.config_json_parser import parse_json
-from .parsers.config_parser import parse_clu_config
+from .parsers.config_parser import parse_clu_config, CluConfig
 from .parsers.om_parser import parse_om
 
 
@@ -30,9 +30,7 @@ async def verify_async(ipaddress: str, key: str, iv: str) -> int | None:
 
 class GrentonApi:
     
-    _objects_by_class: dict[int, list[GObject]]
-    _objects_by_id: dict[str, GObject]
-    _objects_by_name: dict[str, GObject]
+    _clu_config: CluConfig
     
     _interface_manager: InterfaceManager = None
     _interface_manager_lock: threading.Lock = threading.Lock()
@@ -59,25 +57,29 @@ class GrentonApi:
         self._parse_config()
         
     @property
+    def clu_config(self) -> CluConfig:
+        return self._clu_config
+        
+    @property
     def objects(self) -> list[GObject]:
-        return list(self._objects_by_id.values())
+        return list(self._clu_config.objects_by_id.values())
     
     @property
     def objects_by_id(self) -> dict[str, GObject]:
-        return self._objects_by_id
+        return self._clu_config.objects_by_id
     
     @property
     def objects_by_name(self) -> dict[str, GObject]:
-        return self._objects_by_name
+        return self._clu_config.objects_by_name
         
     def get_objects_by_class(self, class_int: int) -> list[GObject]:
-        return self._objects_by_class.get(class_int, [])
+        return self._clu_config.objects_by_class.get(class_int, [])
     
     def get_object_by_id(self, object_id: str) -> GObject | None:
-        return self._objects_by_id.get(object_id, None)
+        return self._clu_config.objects_by_id.get(object_id, None)
     
     def get_object_by_name(self, name: str) -> GObject | None:
-        return self._objects_by_name.get(name, None)
+        return self._clu_config.objects_by_name.get(name, None)
         
     async def check_alive_async(self) -> int:
         return await self._clu_client.check_alive_async()
@@ -112,7 +114,7 @@ class GrentonApi:
             with open(os.path.join(self._config_cache_dir, "om.lua"), "r") as f:
                 om = parse_om(f)
                 
-            self._objects_by_class, self._objects_by_id, self._objects_by_name = parse_clu_config(config_json, om, self._interface_manager, self._clu_client)
+            self._clu_config = parse_clu_config(config_json, om, self._interface_manager, self._clu_client)
         except:
             raise ConfigurationParserError
             

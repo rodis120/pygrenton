@@ -1,5 +1,6 @@
 
 import logging
+from dataclasses import dataclass
 
 from ..clu_client import CluClient
 from ..config_objects import CLUConfig
@@ -10,7 +11,16 @@ from ..types import ModuleObjectType
 from .om_parser import OMEndpoints
 
 
-def parse_clu_config(conf_json: CLUConfig, om: OMEndpoints, interface_manager: InterfaceManager, clu_client: CluClient) -> tuple[dict[int, list[GObject]], dict[str, GObject], dict[str, GObject]]:
+@dataclass
+class CluConfig():
+    om_config: OMEndpoints
+    conf_json: CLUConfig
+    
+    objects_by_class: dict[int, list[GObject]]
+    objects_by_id: dict[str, GObject]
+    objects_by_name: dict[str, GObject]    
+
+def parse_clu_config(conf_json: CLUConfig, om: OMEndpoints, interface_manager: InterfaceManager, clu_client: CluClient) -> CluConfig:
     clu_interface = interface_manager.get_clu_interface(conf_json.hw_type, conf_json.fw_type, conf_json.fw_api_version)
 
     objects_by_class: dict[int, list[GObject]] = {}
@@ -64,4 +74,4 @@ def parse_clu_config(conf_json: CLUConfig, om: OMEndpoints, interface_manager: I
         gclu_obj = GObject(clu_client, obj_name, clu_obj.object_id, obj_int)
         add_object(gclu_obj)
 
-    return objects_by_class, objects_by_id, objects_by_name
+    return CluConfig(om, conf_json, objects_by_class, objects_by_id, objects_by_name)
