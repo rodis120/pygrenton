@@ -1,82 +1,121 @@
+
 import asyncio
-import socket
+import os
 import threading
-import queue
-from .cipher import GrentonCypher
-from .requests import Request, CheckAlive
+import time
+
+import tftpy
+
+from .cipher import GrentonCipher
+from .clu_client import CluClient
+from .exceptions import ConfigurationDownloadError, ConfigurationParserError
+from .gobject import GObject
+from .interface_manager import InterfaceManager
+from .parsers.config_json_parser import parse_json
+from .parsers.config_parser import parse_clu_config, CluConfig
+from .parsers.om_parser import parse_om
+
+
+def verify(ipaddress: str, key: str, iv: str) -> int | None:
+    try:
+        cipher = GrentonCipher(ipaddress, key, iv)
+        clu_client = CluClient(ipaddress, 1234, cipher)
+        
+        return clu_client.check_alive_async()
+    except:
+        return None
+
+async def verify_async(ipaddress: str, key: str, iv: str) -> int | None:
+    return await asyncio.to_thread(verify, ipaddress, key, iv)
 
 class GrentonApi:
-
-    def __init__(self, ip: str, port: int, key: str | bytes, iv: str | bytes, timeout: float = 1) -> None:
-        self._addr = (ip, port)
-        self._timeout = timeout
-        self._local_ip = socket.gethostbyname(socket.gethostname())
-        self._cypher = GrentonCypher(key, iv)
-
-        self._responses: dict = {}
-        self._msg_queue: queue.Queue[tuple[Request, threading.Event]] = queue.Queue()
-
-        self._msg_condition = threading.Condition()
-        self._msg_sender_thread = threading.Thread(target=self._sender_loop, daemon=True)
-        self._msg_sender_thread.start()
-
-    async def send_request_async(self, req: Request):
-        event = self._appendQueue(req)
-
-        event.wait()
-        resp = self._responses.pop(req._id)
+    
+    _clu_config: CluConfig
+    
+    _interface_manager: InterfaceManager = None
+    _interface_manager_lock: threading.Lock = threading.Lock()
+    
+    def __init__(self, ipaddress, key: str | bytes, iv: str | bytes, cache_dir = "pygrenton_cache", timeout: float = 1, client_ip: str | None = None) -> None:
+        self._ipaddress = ipaddress
+        self._cache_dir = cache_dir
+        if not os.path.exists(cache_dir):
+            os.mkdir(cache_dir)
         
-        if isinstance(resp, Exception):
-            raise resp
+        self._cipher = GrentonCipher(key, iv)
+        self._clu_client = CluClient(ipaddress, 1234, self._cipher, timeout, client_ip=client_ip)
         
-        return req.parse_response(resp)
-
-    def send_request(self, req: Request):
-        return asyncio.run(self.send_request_async(req))
-
-    def checkAlive(self) -> bool:
+        clu_sn = self._clu_client.check_alive()
+        self._config_cache_dir = os.path.join(cache_dir, str(clu_sn))
+        if not os.path.exists(self._config_cache_dir):
+            os.mkdir(self._config_cache_dir)
+        
+        with self._interface_manager_lock:
+            if self._interface_manager is None:
+                GrentonApi._interface_manager = InterfaceManager(cache_dir)
+        
+        self._download_config()
+        self._parse_config()
+        
+    @property
+    def clu_config(self) -> CluConfig:
+        return self._clu_config
+        
+    @property
+    def objects(self) -> list[GObject]:
+        return list(self._clu_config.objects_by_id.values())
+    
+    @property
+    def objects_by_id(self) -> dict[str, GObject]:
+        return self._clu_config.objects_by_id
+    
+    @property
+    def objects_by_name(self) -> dict[str, GObject]:
+        return self._clu_config.objects_by_name
+        
+    def get_objects_by_class(self, class_int: int) -> list[GObject]:
+        return self._clu_config.objects_by_class.get(class_int, [])
+    
+    def get_object_by_id(self, object_id: str) -> GObject | None:
+        return self._clu_config.objects_by_id.get(object_id, None)
+    
+    def get_object_by_name(self, name: str) -> GObject | None:
+        return self._clu_config.objects_by_name.get(name, None)
+        
+    async def check_alive_async(self) -> int:
+        return await self._clu_client.check_alive_async()
+    
+    def check_alive(self) -> int:
+        return self._clu_client.check_alive()
+        
+    def _download_config(self) -> None:
+        
+        # a trick to speed up the download by ignoring rest of the content of the file
+        def skip_useless_part(data):
+            msg =  data.data.decode()
+            if msg.find("EventsFor") != -1:
+                data.data = data.data[:-1]
+        
         try:
-            self.send_request(CheckAlive())
-            return True
+            tftp_client = tftpy.TftpClient(self._ipaddress, 69, options={"tsize": 0})
+            self._clu_client.send_request("req_start_ftp")
+            time.sleep(0.01)
+            tftp_client.download("a:\\CONFIG.JSON", os.path.join(self._config_cache_dir, "config.json"))
+            tftp_client.download("a:\\om.lua", os.path.join(self._config_cache_dir, "om.lua"), packethook=skip_useless_part)
+            self._clu_client.send_request("req_tftp_stop")
         except:
-            return False
-
-    def ip(self) -> str:
-        return self._addr[0]
-
-    def port(self) -> int:
-        return self._addr[1]
-    
-    def _appendQueue(self, req: Request):
-        with self._msg_condition:
-            resp_event = threading.Event()
-
-            self._msg_queue.put((req, resp_event))
-            self._msg_condition.notify_all()
-
-            return resp_event
-    
-    def _sender_loop(self):
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.settimeout(self._timeout)
-
-        while True:
-            with self._msg_condition:
-                self._msg_condition.wait_for(lambda: not self._msg_queue.empty())
-                req, resp_event = self._msg_queue.get()
-
-            payload = self._cypher.encrypt(bytes(req.create_request(self._local_ip), "utf-8"))
-
-            try:
-                sock.sendto(payload, self._addr)
+            raise ConfigurationDownloadError
+        
+    def _parse_config(self) -> None:
+        try:
+            config_json = None
+            om = None
+            with open(os.path.join(self._config_cache_dir, "config.json"), "r") as f:
+                config_json = parse_json(f)
+            with open(os.path.join(self._config_cache_dir, "om.lua"), "r") as f:
+                om = parse_om(f)
                 
-                resp = sock.recvfrom(1024)[0]
-                resp = self._cypher.decrypt(resp).decode("utf-8")
-
-                self._responses[req._id] = resp
-
-            except Exception as e:
-                self._responses[req._id] = e
-                
-            resp_event.set()
-
+            self._clu_config = parse_clu_config(config_json, om, self._interface_manager, self._clu_client)
+        except:
+            raise ConfigurationParserError
+            
+        
