@@ -21,7 +21,7 @@ def verify(ipaddress: str, key: str, iv: str) -> int | None:
         cipher = GrentonCipher(ipaddress, key, iv)
         clu_client = CluClient(ipaddress, 1234, cipher)
         
-        return clu_client.check_alive_async()
+        return clu_client.check_alive()
     except:
         return None
 
