@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pygrenton"
-version = "0.0.5"
+version = "1.0.0"
 authors = [
   { name="Paweł Rogaliński", email="progalin55@gmial.com" },
 ]
@@ -19,4 +19,13 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
+]
+
+[tool.hatch.build]
+exclude = [
+	".vscode/",
+	"test.py",
+	"grenton_cache/",
+	"tmp.prof",
+  "pypi_token.txt"
 ]
