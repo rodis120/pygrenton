@@ -18,7 +18,7 @@ from .parsers.om_parser import parse_om
 
 def verify(ipaddress: str, key: str, iv: str) -> int | None:
     try:
-        cipher = GrentonCipher(ipaddress, key, iv)
+        cipher = GrentonCipher(key, iv)
         clu_client = CluClient(ipaddress, 1234, cipher)
         
         return clu_client.check_alive()
