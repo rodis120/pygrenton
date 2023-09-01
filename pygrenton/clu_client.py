@@ -2,6 +2,7 @@ import asyncio
 import random
 import socket
 import threading
+from dataclasses import dataclass
 from collections.abc import Callable
 from typing import Any
 
@@ -108,9 +109,25 @@ def _gen_client_id(object_id: str) -> int:
         
     return acc
 
+@dataclass
+class UpdateContext:
+    object_id: str
+    index: int
+    value: Any
+
 class CluClient:
 
-    def __init__(self, ip: str, port: int, cipher: GrentonCipher, timeout: float = 1, registration_update_interval: float = 60, client_ip: str | None = None, max_connections: int = 6) -> None:
+    def __init__(
+        self,
+        ip: str,
+        port: int,
+        cipher: GrentonCipher,
+        timeout: float = 1,
+        registration_update_interval: float = 60,
+        client_ip: str | None = None,
+        client_port: int = 0,
+        max_connections: int = 6
+    ) -> None:
         self._addr = (ip, port)
         self._timeout = timeout
         self._registration_update_interval = registration_update_interval
@@ -130,7 +147,7 @@ class CluClient:
         self._states_map: dict[tuple[str, int], Any] = {}
         
         self._update_receiver_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self._update_receiver_socket.bind((self._local_ip, 0))
+        self._update_receiver_socket.bind((self._local_ip, client_port))
         self._update_receiver_port = self._update_receiver_socket.getsockname()[1]
         self._update_receiver_thread = threading.Thread(target=self._update_receiver, daemon=True)
         self._update_receiver_thread.start()
@@ -197,7 +214,7 @@ class CluClient:
     async def execute_method_async(self, object_id, index, *args):
         return await asyncio.to_thread(self.execute_method, object_id, index, *args)
     
-    def register_value_change_handler(self, object_id: str, index: int, handler: Callable[[str, int, Any], None]) -> None:
+    def register_value_change_handler(self, object_id: str, index: int, handler: Callable[[UpdateContext], None]) -> None:
         with self._client_registration_lock:
             client_id = _gen_client_id(object_id)
             self._client_id_map[client_id] = object_id
@@ -310,4 +327,4 @@ class CluClient:
                 self._states_map[key] = v
                 handler = self._handler_map[key]
                 
-                threading.Thread(target=handler, args=(object_id, index, v)).start()
+                threading.Thread(target=handler, args=(UpdateContext(object_id, index, v),)).start()
