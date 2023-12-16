@@ -17,7 +17,7 @@ class GFeature:
     _data_type: DataType
     _unit: str
 
-    _enum: list | None
+    _enum: dict | None
     _value_range: tuple[int, int] | None
     
     def __init__(self, clu_client: CluClient, object_id: str, interface: FeatureInterface) -> None:
@@ -61,7 +61,7 @@ class GFeature:
         return self._unit
 
     @property
-    def enum(self) -> list | None:
+    def enum(self) -> dict | None:
         return self._enum
 
     @property
@@ -79,11 +79,22 @@ class GFeature:
     def get_value(self):
         return asyncio.get_event_loop().run_until_complete(self.get_value_async())
 
+    async def get_value_mapped_async(self):
+        val = await self.get_value_async()
+        
+        if self._enum is None or val not in self._enum.keys():
+            return val
+        
+        return self._enum[val]
+    
+    def get_value_mapped(self):
+        return asyncio.get_event_loop().run_until_complete(self.get_value_mapped_async())
+    
     async def set_value_async(self, value):
         if not self._settable:
             raise FeatureNotSettableError(self._name)
 
-        if self._enum is not None and value not in self._enum:
+        if self._enum is not None and value not in self._enum.keys():
             raise ValueError(f"Value: {value} is not in enum: {self._enum}")
         if self._value_range is not None and (value < self._value_range[0] or value > self._value_range[1]):
             raise ValueError(f"Value: {value} is not in value range: ({self._value_range[0]} - {self._value_range[1]})")

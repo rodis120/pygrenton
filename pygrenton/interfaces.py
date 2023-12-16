@@ -15,7 +15,7 @@ class FeatureInterface:
     data_type: DataType
     unit: str
 
-    enum: list | None = None
+    enum: dict | None = None
     value_range: tuple[int, int] | None = None
 
 @dataclass

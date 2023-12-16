@@ -25,9 +25,14 @@ def _parse_feature(elm: Element) -> FeatureInterface:
     en = elm.getAttribute("enum")
     if en != "":
         if data_type == DataType.STRING:
-            enum = [s for s in elm.getAttribute("enum").split(",")]
+            enum = {s: None for s in elm.getAttribute("enum").split(",")}
         elif data_type == DataType.NUMBER:
-            enum = [int(s) for s in elm.getAttribute("enum").split(",")]
+            enum = {int(s): None for s in elm.getAttribute("enum").split(",")}
+            
+        for node in elm.getElementsByTagName("enum"):
+            name = node.getAttribute("name")
+            value = node.getAttribute("value")
+            enum[value] = name
 
     return FeatureInterface(name, index, get, set, data_type, unit, enum, value_range)
 
