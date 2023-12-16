@@ -59,6 +59,14 @@ class GObject:
     @property
     def methods(self) -> list[GMethod]:
         return self._methods
+    
+    def has_feature(self, key: int | str) -> bool:
+        if isinstance(key, int):
+            return self.get_feature_by_index(key) is not None
+        if isinstance(key, str):
+            return self.get_feature_by_name(key) is not None
+        
+        raise TypeError("Key must either be an int or a string.")
 
     def get_feature_by_name(self, name: str) -> GFeature | None:
         for feature in self._features:
@@ -73,6 +81,14 @@ class GObject:
                 return feature
             
         return None
+    
+    def has_method(self, key: int | str) -> bool:
+        if isinstance(key, int):
+            return self.get_method_by_index(key) is not None
+        if isinstance(key, str):
+            return self.get_method_by_name(key) is not None
+        
+        raise TypeError("Key must either be an int or a string.")
 
     def get_method_by_name(self, name: str) -> GMethod | None:
         for method in self._methods:
