@@ -155,7 +155,7 @@ class CluClient:
         self._client_registration_payloads: dict[str, str] = {}
         self._client_registration_lock = threading.Lock()
         self._client_registration_thread = threading.Thread(target=self._client_registration, daemon=True)
-        self._client_registration_thread.start()
+        # self._client_registration_thread.start()
 
     @property
     def clu_ip(self) -> str:
@@ -168,6 +168,9 @@ class CluClient:
     @property
     def client_ip(self) -> str:
         return self._local_ip
+    
+    def start_client_registration(self):
+        self._client_registration_thread.start()
 
     def send_request(self, msg: str) -> str:
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -229,8 +232,8 @@ class CluClient:
             payload = self._create_registration_payload(object_id)
             self._client_registration_payloads[object_id] = payload
             
-            resp = self.send_request(payload)
-            self._handle_update_message(resp)
+            # resp = self.send_request(payload)
+            # self._handle_update_message(resp)
         
     def remove_value_change_handler(self, object_id: str, index: int) -> None:
         with self._client_registration_lock:

@@ -97,6 +97,9 @@ class GrentonApi:
     def check_alive(self) -> int:
         return self._clu_client.check_alive()
         
+    def register_update_handlers(self):
+        self._clu_client.start_client_registration()
+        
     def _download_config(self) -> None:
         
         # a trick to speed up the download by ignoring rest of the content of the file
