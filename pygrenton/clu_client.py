@@ -2,12 +2,16 @@ import asyncio
 import random
 import socket
 import threading
+import time
+from queue import Queue
 from dataclasses import dataclass
 from collections.abc import Callable
 from typing import Any
 
 from .cipher import GrentonCipher
 
+
+FETCH_PAGE_SIZE = 32
 
 def _get_host_ip(clu_ip: str) -> str:
     _, _, ips = socket.gethostbyname_ex(socket.gethostname())
@@ -114,7 +118,21 @@ class UpdateContext:
     object_id: str
     index: int
     value: Any
-
+    
+class ResponseEvent(threading.Event):
+    
+    def __init__(self) -> None:
+        super().__init__()
+        
+        self._response = None
+    
+    def set(self, response) -> None:
+        self._response = response
+        return super().set()
+    
+    @property
+    def response(self) -> Any:    
+        return self._response
 class CluClient:
 
     def __init__(
@@ -156,6 +174,10 @@ class CluClient:
         self._client_registration_lock = threading.Lock()
         self._client_registration_thread = threading.Thread(target=self._client_registration, daemon=True)
         self._client_registration_thread.start()
+        
+        self._fetch_queue: Queue[tuple[str, int, ResponseEvent]] = Queue()
+        self._fetch_thread = threading.Thread(target=self._fetch_loop, daemon=True)
+        self._fetch_thread.start()
 
     @property
     def clu_ip(self) -> str:
@@ -197,9 +219,23 @@ class CluClient:
 
     def get_value(self, object_id: str, index: int):
         return self._send_lua_request(f"{object_id}:get({index})")
-
+    
     async def get_value_async(self, object_id: str, index: int):
         return await asyncio.to_thread(self.get_value, object_id, index)
+
+    def fetch_value(self, object_id: str, index: int):
+        event = ResponseEvent()
+        self._fetch_queue.put((object_id, index, event))
+        
+        event.wait()
+        resp = event.response
+        if isinstance(resp, Exception):
+            raise resp
+        
+        return resp
+    
+    async def fetch_value_async(self, object_id: str, index: int):
+        return await asyncio.to_thread(self.fetch_value, object_id, index)
 
     def set_value(self, object_id: str, index: int, value) -> None:
         self._send_lua_request(f"{object_id}:set({index},{value})")
@@ -328,3 +364,38 @@ class CluClient:
                 handler = self._handler_map[key]
                 
                 threading.Thread(target=handler, args=(UpdateContext(object_id, index, v),)).start()
+
+    def _fetch_loop(self):
+        while True:
+            if self._fetch_queue.qsize() < FETCH_PAGE_SIZE:
+                time.sleep(0.1)  
+               
+            page = [self._fetch_queue.get() for _ in range(min(FETCH_PAGE_SIZE, self._fetch_queue.qsize()))]
+            if len(page) == 0:
+                continue
+            
+            #create payload for fetch
+            pairs = [f"{{{obj}, {index}}}" for obj, index, _ in page]
+            print(len(pairs))
+            payload = f"SYSTEM:fetchValues({{{','.join(pairs)}}})"
+            
+            #send request
+            try:
+                resp = self._send_lua_request(payload)
+                
+                for i, val in enumerate(resp[resp.find(":")+2:-1].split(",")):
+                    #parse values
+                    if val.startswith('"') and val.endswith('"'):
+                        val = val[1:-1]
+                    elif val == "true" or val == "false":
+                        val = val == "true"
+                    elif val == "nil":
+                        val = None
+                    else:
+                        val = float(val)
+                        
+                    page[i][2].set(val)
+                
+            except Exception as e:
+                for _, _, event in page:
+                    event.set(e)

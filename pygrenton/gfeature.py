@@ -78,6 +78,17 @@ class GFeature:
 
     def get_value(self):
         return asyncio.get_event_loop().run_until_complete(self.get_value_async())
+    
+    async def fetch_value_async(self):
+        if not self._gettable:
+            raise FeatureNotGettableError(self._name)
+        
+        value = await self._clu_client.fetch_value_async(self._object_id, self._index)
+        
+        return self.data_type.convert_value(value)
+    
+    def fetch_value(self):
+        return asyncio.get_event_loop().run_until_complete(self.fetch_value_async())
 
     async def get_value_mapped_async(self):
         val = await self.get_value_async()
