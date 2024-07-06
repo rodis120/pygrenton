@@ -211,7 +211,8 @@ class CluClient:
         await asyncio.to_thread(self.set_value, object_id, index, value)
 
     def execute_method(self, object_id, index, *args):
-        args_str = ','.join([i for i in args]) if len(args) > 0 else ", 0"
+        args = list(map(lambda arg: f'"{arg}"' if isinstance(arg, str) else str(arg), args))
+        args_str = ','.join([i for i in args]) if len(args) > 0 else '0'
         return self._send_lua_request(f"{object_id}:execute({index},{args_str})")
     
     async def execute_method_async(self, object_id, index, *args):
