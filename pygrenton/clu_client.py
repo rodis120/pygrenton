@@ -1,103 +1,28 @@
 import asyncio
-import random
 import socket
 import threading
 from dataclasses import dataclass
 from collections.abc import Callable
 from typing import Any
 
-from .cipher import GrentonCipher
-
-
-def _get_host_ip(clu_ip: str) -> str:
-    _, _, ips = socket.gethostbyname_ex(socket.gethostname())
-
-    for ip in ips:
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.bind((ip, 0))
-        
-        try:
-            sock.sendto(b"", (clu_ip, 1234))
-            return ip
-        except:
-            pass
-        
-    #TODO: throw exception when no ip is found
-    return ""
-
-def _find_n_character(string: str, char: str, n: int) -> int:
-    count = 0
-    for index, c in enumerate(string):
-        if c == char:
-            count += 1
-            if count == n:
-                return index
-            
-    return -1
-
-def _extract_payload(resp: str) -> str:
-    index = _find_n_character(resp, ':', 3)
-    if index == -1:
-        return resp
-         
-    return resp[index + 1:]
-        
-def _generate_id_hex(lenght=8) -> str:
-        return ''.join(random.choices("01234567890abcdef", k=lenght))
-
-def _parse_list(msg: str, start: int = 0) -> tuple[int, list]:
-    values = []
-    i = start
-    prev_i = start
-    quote = False
-    
-    def convert_type(data: str):
-        data = data.strip()
-        if data.startswith('"') and data.endswith('"'):
-            return data[1:-1]
-        elif data == "true":
-            return True
-        elif data == "false":
-            return False
-        elif data == "nil":
-            return None
-        
-        return float(data)
-    
-    def append_if_not_empty(m: str):
-        if m.strip() != "":
-            values.append(convert_type(m))
-    
-    length = len(msg)
-    while i < length:
-        c = msg[i]
-        if c == ',' and not quote:
-            append_if_not_empty(msg[prev_i:i])
-            prev_i = i+1 
-        elif c == '"':
-            quote = not quote
-        elif c == '{' and not quote:
-            i, sub_list = _parse_list(msg, i+1)
-            prev_i = i + 1
-            values.append(sub_list)   
-        elif c == '}' and not quote:
-            append_if_not_empty(msg[prev_i:i])
-            return i, values
-        
-        i += 1
-    
-    values.append(convert_type(msg[prev_i:]))
-    return i-1, values      
+from .cipher import GrentonCipher     
+from .utils import (
+    find_n_character,
+    parse_list,
+    get_host_ip,
+    generate_id_hex,
+    extract_payload
+)
  
 def _parse_update_message(msg: str) -> tuple[int, list]:
-    index = _find_n_character(msg, ':', 4)
+    index = find_n_character(msg, ':', 4)
     msg = msg[index + 1:]
     
     index = msg.find(':')
     client_id = int(msg[:index])
     
     msg = msg[index + 2:-1]
-    _, values = _parse_list(msg)
+    _, values = parse_list(msg)
     
     return client_id, values
 
@@ -135,7 +60,7 @@ class CluClient:
         if client_ip:
             self._local_ip = client_ip
         else:
-            self._local_ip = _get_host_ip(ip)
+            self._local_ip = get_host_ip(ip)
             
         self._cipher = cipher
         
@@ -252,11 +177,11 @@ class CluClient:
             self._handler_map.pop((object_id, index))
 
     def _send_lua_request(self, payload) -> str:
-        req_id = _generate_id_hex()
+        req_id = generate_id_hex()
         payload = f'req:{self._local_ip}:{req_id}:(load("result = {payload} return (type(result) .. \\\":\\\" .. tostring(result))")())' # basically remote code execution
     
         resp = self.send_request(payload)
-        resp = _extract_payload(resp)
+        resp = extract_payload(resp)
         
         i = resp.find(":")
         
@@ -276,7 +201,7 @@ class CluClient:
         client_id =_gen_client_id(object_id)
         items = [f"{{{object_id},{i}}}" for i in self._feature_index_map[object_id]]
         port = self._update_receiver_port
-        payload = f"req:{self._local_ip}:{_generate_id_hex()}:SYSTEM:clientRegister(\"{self._local_ip}\",{port},{client_id},{{{','.join(items)}}})"
+        payload = f"req:{self._local_ip}:{generate_id_hex()}:SYSTEM:clientRegister(\"{self._local_ip}\",{port},{client_id},{{{','.join(items)}}})"
         return payload
     
     def _client_registration(self) -> None:
