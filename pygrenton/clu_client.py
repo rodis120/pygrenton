@@ -242,8 +242,8 @@ class CluClient:
                 try:
                     for page in self._client_pages.values():
                         self._refresh_page(page)
-                except IOError:
-                    pass
+                except Exception as e:
+                    print(e)
             
             time.sleep(self._client_refresh_interval)
         
