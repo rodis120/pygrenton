@@ -201,7 +201,7 @@ class CluClient:
             self._refresh_page(page)
             
     async def remove_value_change_handler_async(self, object_id: str, index: int) -> None:
-        await asyncio.to_thread(self.remove_value_change_handler(object_id, index))
+        await asyncio.to_thread(self.remove_value_change_handler, object_id, index)
         
     def send_lua_request(self, payload: str, ignore_response: bool = False, ignore_type: bool = False) -> str:
         req_id = generate_id_hex()
