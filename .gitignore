@@ -132,3 +132,5 @@ dmypy.json
 pygrenton_cache/
 tmp.prof
 pypi_token.txt
+
+.ruff_cache
