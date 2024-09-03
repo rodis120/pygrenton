@@ -108,7 +108,7 @@ class CluClient:
     def client_ip(self) -> str:
         return self._local_ip
 
-    def send_request(self, msg: str, ignore_response: bool = True) -> str:
+    def send_request(self, msg: str, ignore_response: bool = False) -> str:
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.settimeout(self._timeout)
         
