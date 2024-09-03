@@ -130,19 +130,19 @@ class CluClient:
         return await asyncio.to_thread(self.send_request, msg)
     
     def check_alive(self) -> int:
-        return int(self._send_lua_request("checkAlive()"), 16)
+        return int(self.send_lua_request("checkAlive()"), 16)
     
     async def check_alive_async(self) -> int:
         return await asyncio.to_thread(self.check_alive)
 
     def get_value(self, object_id: str, index: int):
-        return self._send_lua_request(f"{object_id}:get({index})")
+        return self.send_lua_request(f"{object_id}:get({index})")
 
     async def get_value_async(self, object_id: str, index: int):
         return await asyncio.to_thread(self.get_value, object_id, index)
 
     def set_value(self, object_id: str, index: int, value) -> None:
-        self._send_lua_request(f"{object_id}:set({index},{value})")
+        self.send_lua_request(f"{object_id}:set({index},{value})")
 
     async def set_value_async(self, object_id: str, index: int, value) -> None:
         await asyncio.to_thread(self.set_value, object_id, index, value)
@@ -150,7 +150,7 @@ class CluClient:
     def execute_method(self, object_id, index, *args):
         args = list(map(lambda arg: f'"{arg}"' if isinstance(arg, str) else str(arg), args))
         args_str = ','.join([i for i in args]) if len(args) > 0 else '0'
-        return self._send_lua_request(f"{object_id}:execute({index},{args_str})")
+        return self.send_lua_request(f"{object_id}:execute({index},{args_str})")
     
     async def execute_method_async(self, object_id, index, *args):
         return await asyncio.to_thread(self.execute_method, object_id, index, *args)
@@ -203,7 +203,7 @@ class CluClient:
     async def remove_value_change_handler_async(self, object_id: str, index: int) -> None:
         await asyncio.to_thread(self.remove_value_change_handler(object_id, index))
         
-    def _send_lua_request(self, payload: str, ignore_response: bool = False, ignore_type: bool = False) -> str:
+    def send_lua_request(self, payload: str, ignore_response: bool = False, ignore_type: bool = False) -> str:
         req_id = generate_id_hex()
         
         if not (ignore_type or ignore_response):
@@ -235,6 +235,9 @@ class CluClient:
             return value == "true"
         else:
             return None
+        
+    async def send_lua_request_async(self, payload: str, ignore_response: bool = False, ignore_type: bool = False) -> str:
+        return await asyncio.to_thread(self.send_lua_request, payload, ignore_response, ignore_type)
         
     def _refresh_client_pages(self):
         while True:
@@ -300,12 +303,12 @@ class CluClient:
         return page
     
     def _register_page(self, page: ClientPage) -> None:
-        resp = self._send_lua_request(page.create_payload(self._local_ip, self._update_receiver_port), ignore_type=True)
+        resp = self.send_lua_request(page.create_payload(self._local_ip, self._update_receiver_port), ignore_type=True)
         i = resp.find(':')
         self._handle_update_message(resp[i+1:], time.time())
     
     def _unregister_page(self, page: ClientPage) -> None:
-        self._send_lua_request(f'SYSTEM:clientDestroy("{self._local_ip}",{self._update_receiver_port},{page.client_id})', ignore_response=True)
+        self.send_lua_request(f'SYSTEM:clientDestroy("{self._local_ip}",{self._update_receiver_port},{page.client_id})', ignore_response=True)
         
     def _refresh_page(self, page: ClientPage) -> None:
         self._unregister_page(page)
