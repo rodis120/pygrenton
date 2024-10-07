@@ -1,5 +1,6 @@
 
 import asyncio
+from typing import Any
 
 from .clu_client import CluClient
 from .interfaces import MethodInterface, ParameterInterface
@@ -7,30 +8,15 @@ from .types import CallType, DataType
 
 
 class GMethod:
-    _clu_client: CluClient
-    _object_id: str
-    _name: str
-    _index: int
-    _call_type: CallType
 
-    _params: list[ParameterInterface]
-
-    _return_type: DataType
-    _unit: str | None
-    
     def __init__(self, clu_client: CluClient, object_id: str, interface: MethodInterface) -> None:
         self._clu_client = clu_client
         self._object_id = object_id
-        self._name = interface.name
-        self._index = interface.index
-        self._call_type = interface.call
-        self._params = interface.parameters
-        self._return_type = interface.return_type
-        self._unit = interface.unit
+        self._interface = interface
 
     @property
     def name(self) -> str:
-        return self._name
+        return self._interface.name
 
     @property
     def parent(self) -> str:
@@ -38,30 +24,30 @@ class GMethod:
 
     @property
     def index(self) -> int:
-        return self._index
+        return self._interface.index
 
     @property
     def call_type(self) -> CallType:
-        return self._call_type
+        return self._interface.call
 
     @property
     def parameters(self) -> list[ParameterInterface]:
-        return self._params
+        return self._interface.parameters
 
     @property
     def return_type(self) -> DataType:
-        return self._return_type
+        return self._interface.return_type
 
     @property
     def unit(self) -> str | None:
-        return self._unit
+        return self._interface.unit
 
-    async def execute_method_async(self, *args):
-        if len(args) != len(self._params):
-            raise ValueError(f"Incorrect number of arguments: expected {len(self._params)}, provided {len(args)}")
-        
-        for arg, intr in zip(args, self._params):
-            
+    async def execute_method_async(self, *args: Any):
+        if len(args) != len(self.parameters):
+            msg = f"Incorrect number of arguments: expected {len(self.parameters)}, provided {len(args)}"
+            raise ValueError(msg)
+
+        for arg, intr in zip(args, self.parameters, strict=False):
             if intr.data_type == DataType.NUMBER:
                 if not (isinstance(arg, int) or isinstance(arg, float)):
                     raise ValueError(f"\"{type(arg)}\" is incorrect type for argument \"{intr.name}\". Expected a number")
@@ -69,14 +55,14 @@ class GMethod:
                 raise ValueError(f"\"{type(arg)}\" is incorrect type for argument \"{intr.name}\". Expected a string")
 
         value = None
-        if self._call_type == CallType.SET:
-            return await self._clu_client.set_value_async(self._object_id, self._index, args[0])
-        elif self._call_type == CallType.GET:
-            value = await self._clu_client.get_value_async(self._object_id, self._index)
+        if self.call_type == CallType.SET:
+            return await self._clu_client.set_value_async(self._object_id, self.parameters, args[0])
+        if self.call_type == CallType.GET:
+            value = await self._clu_client.get_value_async(self._object_id, self.parameters)
         else:
-            value = await self._clu_client.execute_method_async(self._object_id, self._index, *args)
-         
+            value = await self._clu_client.execute_method_async(self._object_id, self.index, *args)
+
         return self.return_type.convert_value(value)
 
-    def execute_method(self, *args):
+    def execute_method(self, *args: Any):
         return asyncio.get_event_loop().run_until_complete(self.execute_method_async(*args))
