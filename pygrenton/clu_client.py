@@ -18,6 +18,8 @@ from .utils import (
 
 _LOGGER = logging.getLogger(__name__)
 
+PAGE_REFRESH_DELAY = 0.1
+
 def _parse_update_message(msg: str) -> tuple[int, list]:
     index = find_n_character(msg, ":", 4)
     msg = msg[index + 1:]
@@ -203,7 +205,7 @@ class CluClient:
     async def remove_value_change_handler_async(self, object_id: str, index: int) -> None:
         await asyncio.to_thread(self.remove_value_change_handler, object_id, index)
 
-    def send_lua_request(self, payload: str, ignore_response: bool = False, ignore_type: bool = False) -> str:
+    def send_lua_request(self, payload: str, ignore_response: bool = False, ignore_type: bool = False) -> str|float|bool:
         req_id = generate_id_hex()
 
         if not (ignore_type or ignore_response):
@@ -235,7 +237,7 @@ class CluClient:
             return value == "true"
         return None
 
-    async def send_lua_request_async(self, payload: str, ignore_response: bool = False, ignore_type: bool = False) -> str:
+    async def send_lua_request_async(self, payload: str, ignore_response: bool = False, ignore_type: bool = False) -> str|float|bool:
         return await asyncio.to_thread(self.send_lua_request, payload, ignore_response, ignore_type)
 
     def _refresh_client_pages(self) -> None:
@@ -244,9 +246,9 @@ class CluClient:
                 try:
                     for page in self._client_pages.values():
                         self._refresh_page(page)
+                        time.sleep(PAGE_REFRESH_DELAY)
                 except Exception:
                     _LOGGER.exception()
-                    raise
 
             time.sleep(self._client_refresh_interval)
 
@@ -312,6 +314,6 @@ class CluClient:
         self.send_lua_request(f'SYSTEM:clientDestroy("{self._local_ip}",{self._update_receiver_port},{page.client_id})', ignore_response=True)
 
     def _refresh_page(self, page: ClientPage) -> None:
-        self._unregister_page(page)
+        # self._unregister_page(page)
         self._register_page(page)
         page.last_mod = time.time()
