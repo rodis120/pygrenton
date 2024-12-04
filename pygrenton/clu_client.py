@@ -3,7 +3,7 @@ import logging
 import socket
 import threading
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -158,31 +158,39 @@ class CluClient:
         return await asyncio.to_thread(self.execute_method, object_id, index, *args)
 
     # Client registration section
-    def register_value_change_handler(self, object_id: str, index: int, handler: Callable[[UpdateContext], None]) -> None:
+    def register_value_change_handler(self, object_id: str, index: int|Iterable[int], handler: Callable[[UpdateContext], None]) -> None:
         with self._client_registration_lock:
-            fentry = FeatureEntry(object_id, index)
-            if fentry in self._handler_map:
+            pages = set()
+
+            if isinstance(index, int):
+                index = (index,)
+
+            for idx in index:
+                fentry = FeatureEntry(object_id, idx)
+                if fentry in self._handler_map:
+                    self._handler_map[fentry] = handler
+                    return
+
                 self._handler_map[fentry] = handler
-                return
 
-            self._handler_map[fentry] = handler
+                if len(self._free_client_pages) > 0:
+                    page = self._free_client_pages.pop()
+                    if len(page.features) < self._page_size - 1:
+                        self._free_client_pages.add(page)
+                    page.modified = True
 
-            page: ClientPage = None
-            if len(self._free_client_pages) > 0:
-                page = self._free_client_pages.pop()
-                if len(page.features) < self._page_size - 1:
-                    self._free_client_pages.add(page)
-                page.modified = True
+                else:
+                    page = self._create_new_page()
 
-            else:
-                page = self._create_new_page()
+                page.features.append(fentry)
+                self._client_pages_index[fentry] = page
 
-            page.features.append(fentry)
-            self._client_pages_index[fentry] = page
+                pages.add(page)
 
-            self._refresh_page(page)
+            for page in pages:
+                self._refresh_page(page)
 
-    async def register_value_change_handler_async(self, object_id: str, index: int, handler: Callable[[UpdateContext], None]) -> None:
+    async def register_value_change_handler_async(self, object_id: str, index: int|Iterable[int], handler: Callable[[UpdateContext], None]) -> None:
         await asyncio.to_thread(self.register_value_change_handler, object_id, index, handler)
 
     def remove_value_change_handler(self, object_id: str, index: int) -> None:
