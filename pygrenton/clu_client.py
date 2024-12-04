@@ -248,6 +248,10 @@ class CluClient:
     async def send_lua_request_async(self, payload: str, ignore_response: bool = False, ignore_type: bool = False) -> str|float|bool:
         return await asyncio.to_thread(self.send_lua_request, payload, ignore_response, ignore_type)
 
+    def run_lua_garbage_collector(self) -> None:
+        payload = 'collectgarbage("collect")'
+        self.send_lua_request(payload, ignore_response=True, ignore_type=True)
+
     def _refresh_client_pages(self) -> None:
         while True:
             with self._client_registration_lock:
@@ -257,6 +261,8 @@ class CluClient:
                         time.sleep(PAGE_REFRESH_DELAY)
                 except Exception:
                     _LOGGER.exception()
+
+            self.run_lua_garbage_collector()
 
             time.sleep(self._client_refresh_interval)
 
