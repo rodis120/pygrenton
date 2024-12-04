@@ -272,13 +272,13 @@ class CluClient:
             try:
                 encrypted, _ = self._update_receiver_socket.recvfrom(1024)
                 decrypted = self._cipher.decrypt(encrypted).decode("utf-8")
+
+                msg_time = time.time()
+                with self._client_registration_lock:
+                    self._handle_update_message(decrypted, msg_time)
             except Exception:
                 _LOGGER.exception()
                 continue
-
-            msg_time = time.time()
-            with self._client_registration_lock:
-                self._handle_update_message(decrypted, msg_time)
 
     def _handle_update_message(self, message: str, message_timestamp: float) -> None:
         client_id, values = _parse_update_message(message)
