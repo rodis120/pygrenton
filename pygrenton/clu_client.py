@@ -260,7 +260,7 @@ class CluClient:
                         self._refresh_page(page)
                         time.sleep(PAGE_REFRESH_DELAY)
                 except Exception:
-                    _LOGGER.exception()
+                    _LOGGER.exception("Client page refresh failed")
 
             self.run_lua_garbage_collector()
 
@@ -277,7 +277,7 @@ class CluClient:
                 with self._client_registration_lock:
                     self._handle_update_message(decrypted, msg_time)
             except Exception:
-                _LOGGER.exception()
+                _LOGGER.exception("Update receiver exception")
                 continue
 
     def _handle_update_message(self, message: str, message_timestamp: float) -> None:
