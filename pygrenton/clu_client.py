@@ -5,6 +5,7 @@ import threading
 import time
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
+from multiprocessing.pool import ThreadPool
 from typing import Any
 
 from .cipher import GrentonCipher
@@ -70,7 +71,8 @@ class CluClient:
         client_ip: str | None = None,
         client_port: int = 0,
         max_connections: int = 4,
-        page_size: int = 16
+        page_size: int = 16,
+        update_handler_threads: int = 4
     ) -> None:
         self._addr = (ip, port)
         self._timeout = timeout
@@ -90,6 +92,7 @@ class CluClient:
         self._client_pages: dict[int, ClientPage] = {}
         self._free_client_pages: set[ClientPage] = set()
         self._handler_map: dict[FeatureEntry, Callable[[UpdateContext], None]] = {}
+        self._update_handler_thread_pool = ThreadPool(processes=update_handler_threads)
 
         self._update_receiver_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self._update_receiver_socket.bind((self._local_ip, client_port))
@@ -303,7 +306,11 @@ class CluClient:
 
     def _procces_update(self, entry: FeatureEntry, value: Any) -> None:
         handler = self._handler_map[entry]
-        threading.Thread(target=handler, args=(UpdateContext(entry.object_id, entry.index, value),)).start()
+        self._update_handler_thread_pool.apply_async(
+            func=handler,
+            args=(UpdateContext(entry.object_id, entry.index, value),),
+            error_callback=lambda _: _LOGGER.exception("Update handler execution failed"),
+        )
 
     def _create_new_page(self) -> ClientPage:
         used_ids = self._client_pages.keys()
