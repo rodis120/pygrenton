@@ -5,7 +5,7 @@ import random
 import re
 import socket
 import time
-from collections.abc import Callable, Iterable
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from multiprocessing.pool import ThreadPool
 from threading import Lock, Thread
@@ -20,7 +20,7 @@ _LOGGER = logging.getLogger(__name__)
 _CLIENT_REFRESH_INTERVAL = 60
 _CLIENT_PAGE_SIZE = 16
 
-_UPDATE_MESSAGE_PATTERN = re.compile(r"^res:\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}:[\d\w]+:clientUpdate:(\d+):\{(.*)\}$")
+_UPDATE_MESSAGE_PATTERN = re.compile(r"^resp:\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}:[\da-fA-F]+:clientReport:(\d+):\{(.*)\}$")
 
 @dataclass
 class UpdateContext:
@@ -110,19 +110,15 @@ class ClientManager:
 
     def __del__(self) -> None:
         """Terminates client managern on instance destruction."""
+        self.close()
+
+    def close(self) -> None:
+        """Close the client manager."""
         self._running = False
         self._socket.close()
         self._handler_thread_pool.terminate()
 
-    def register_update_handler(self, object_id: str, index: int|Iterable[int], handler: Callable[[UpdateContext], None]) -> None:
-
-        if isinstance(index, int):
-            index = (index,)
-
-        for idx in index:
-            self._add_update_handler(object_id, idx, handler)
-
-    def _add_update_handler(self, object_id: str, index: int, handler: Callable[[UpdateContext], None]) -> None:
+    def add_update_handler(self, object_id: str, index: int, handler: Callable[[UpdateContext], None]) -> None:
         with self._client_pages_lock:
             key = _FeatureKey(object_id, index)
 
@@ -146,6 +142,35 @@ class ClientManager:
 
             if len(page.features) < _CLIENT_PAGE_SIZE:
                 self._nonfull_pages.add(page)
+
+    def remove_update_handler(self, object_id: str, index: int, handler: Callable[[UpdateContext], None]) -> None:
+        with self._client_pages_lock:
+            key = _FeatureKey(object_id, index)
+
+            entry = self._feature_entries.get(key)
+            if entry is None:
+                return
+
+            entry.update_handlers.remove(handler)
+
+            if not entry.update_handlers:
+                self._remove_feature_entry(entry)
+
+    def _remove_feature_entry(self, key: _FeatureKey) -> None:
+        entry = self._feature_entries.get(key)
+        for page in self._client_pages.values():
+            if entry in page.features:
+                page.features.remove(entry)
+                page.modified = True
+                page.modification_time = time.time()
+                self._page_modified = True
+
+                self._nonfull_pages.add(page)
+
+                if not page.features:
+                    del self._client_pages[page.client_id]
+                    self._nonfull_pages.remove(page)
+                break
 
     def _gen_unique_client_id(self) -> int:
         while True:
