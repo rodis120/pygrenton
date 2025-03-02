@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import re
 import socket
 import threading
 from collections.abc import Callable, Iterable
@@ -7,13 +8,15 @@ from typing import Any
 
 from .cipher import GrentonCipher
 from .client_manager import ClientManager, UpdateContext
+from .exceptions import InvalidLuaResponseError
 from .utils import (
-    extract_payload,
     generate_id_hex,
     get_host_ip,
 )
 
 _LOGGER = logging.getLogger(__name__)
+
+_LUA_RESPONSE_PATTERN = re.compile(r"^resp:\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}:[\da-fA-F]+:(.+)$")
 
 class CluClient:
 
@@ -116,42 +119,40 @@ class CluClient:
     async def remove_value_change_handler_async(self, object_id: str, index: int, handler: Callable[[UpdateContext], None]) -> None:
         await asyncio.to_thread(self.remove_value_change_handler, object_id, index, handler)
 
-    def send_lua_request(self, payload: str, ignore_response: bool = False, ignore_type: bool = False) -> str|float|bool:
+    def send_lua_request(self, payload: str) -> str|float|bool|None:
         req_id = generate_id_hex()
+        payload = f'req:{self._local_ip}:{req_id}:(load("result = {payload} return (type(result) .. \\":\\" .. tostring(result))")())'
 
-        if not (ignore_type or ignore_response):
-            # basically remote code execution
-            payload = f'(load("result = {payload} return (type(result) .. \\":\\" .. tostring(result))")())'
-
-        payload = f"req:{self._local_ip}:{req_id}:{payload}"
-
-        resp = self.send_request(payload, ignore_response)
-
-        if ignore_response:
-            return None
-
-        resp = extract_payload(resp)
-
-        if ignore_type:
-            return resp
+        resp = self.send_request(payload)
+        resp = self._extract_lua_response_payload(resp)
 
         i = resp.find(":")
-
         resp_type = resp[:i]
         value = resp[i+1:]
 
-        if resp_type == "number":
-            return float(value)
-        if resp_type == "string":
-            return value
-        if resp_type == "boolean":
-            return value == "true"
-        return None
+        match resp_type:
+            case "number":
+                return float(value)
+            case "string":
+                return value
+            case "boolean":
+                return value == "true"
+            case "nil":
+                return None
+            case _:
+                _LOGGER.debug("Unsupported response type: %s", resp_type)
+                return None
 
-    async def send_lua_request_async(self, payload: str, ignore_response: bool = False, ignore_type: bool = False) -> str|float|bool:
-        return await asyncio.to_thread(self.send_lua_request, payload, ignore_response, ignore_type)
+    async def send_lua_request_async(self, payload: str) -> str|float|bool|None:
+        return await asyncio.to_thread(self.send_lua_request, payload)
 
     def run_lua_garbage_collector(self) -> None:
         payload = 'collectgarbage("collect")'
-        self.send_lua_request(payload, ignore_response=True, ignore_type=True)
+        self.send_lua_request(payload)
 
+    def _extract_lua_response_payload(self, response: str) -> str:
+        match = _LUA_RESPONSE_PATTERN.match(response)
+        if match:
+            return match.group(1)
+
+        raise InvalidLuaResponseError(response)

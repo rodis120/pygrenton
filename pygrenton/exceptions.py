@@ -29,3 +29,9 @@ class InvalidUpdateMessageError(Exception):
     def __init__(self) -> None:
         """Init the exception."""
         super().__init__("Received an invalid update message.")
+
+class InvalidLuaResponseError(Exception):
+
+    def __init__(self, response: str) -> None:
+        """Init the exception."""
+        super().__init__(f"Invalid Lua response: {response}")

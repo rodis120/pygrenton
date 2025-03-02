@@ -18,23 +18,6 @@ def get_host_ip(clu_ip: str) -> str:
     #TODO: throw exception when no ip is found
     return ""
 
-def find_n_character(string: str, char: str, n: int) -> int:
-    count = 0
-    for index, c in enumerate(string):
-        if c == char:
-            count += 1
-            if count == n:
-                return index
-            
-    return -1
-
-def extract_payload(resp: str) -> str:
-    index = find_n_character(resp, ':', 3)
-    if index == -1:
-        return resp
-         
-    return resp[index + 1:]
-        
 def generate_id_hex(lenght=8) -> str:
     return ''.join(random.choices("01234567890abcdef", k=lenght))
 
