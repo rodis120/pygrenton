@@ -121,7 +121,9 @@ class CluClient:
 
     def send_lua_request(self, payload: str) -> str|float|bool|None:
         req_id = generate_id_hex()
-        payload = f'req:{self._local_ip}:{req_id}:(load("result = {payload} return (type(result) .. \\":\\" .. tostring(result))")())'
+
+        # simple lua script that returns data type of the response
+        payload = f'req:{self._local_ip}:{req_id}:(function() local res=({payload}) return (type(res) .. ":" .. tostring(res)) end)()'
 
         resp = self.send_request(payload)
         resp = self._extract_lua_response_payload(resp)
