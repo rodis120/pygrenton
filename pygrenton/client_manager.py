@@ -93,6 +93,12 @@ class ClientManager:
         self._socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self._socket.bind((client_ip, client_port))
 
+        self._feature_entries: dict[_FeatureKey, _FeatureEntry] = {}
+        self._client_pages: dict[int, _ClientPage] = {}
+        self._nonfull_pages: set[_ClientPage] = {}
+        self._client_pages_lock = Lock()
+        self._page_modified = False
+
         self._running = True
         self._listener_thread = Thread(target=self._listener, daemon=True)
         self._listener_thread.start()
@@ -101,12 +107,6 @@ class ClientManager:
         self._keep_alive_thread.start()
 
         self._handler_thread_pool = ThreadPool(processes=handler_threads)
-
-        self._feature_entries: dict[_FeatureKey, _FeatureEntry] = {}
-        self._client_pages: dict[int, _ClientPage] = {}
-        self._nonfull_pages: set[_ClientPage] = {}
-        self._client_pages_lock = Lock()
-        self._page_modified = False
 
     def __del__(self) -> None:
         """Terminates client managern on instance destruction."""
