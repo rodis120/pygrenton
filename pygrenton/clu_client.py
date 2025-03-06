@@ -57,7 +57,7 @@ class CluClient:
     def client_ip(self) -> str:
         return self._client_ip
 
-    def send_request(self, msg: str, ignore_response: bool = False) -> str:
+    def send_request(self, msg: str) -> str:
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.settimeout(self._timeout)
 
@@ -66,9 +66,8 @@ class CluClient:
         try:
             with self._request_semaphore:
                 sock.sendto(payload, (self._clu_ip, self._clu_port))
-                if not ignore_response:
-                    resp, _ = sock.recvfrom(1024)
-                    return self._cipher.decrypt(resp).decode()
+                resp, _ = sock.recvfrom(1024)
+                return self._cipher.decrypt(resp).decode()
         finally:
             sock.close()
 
