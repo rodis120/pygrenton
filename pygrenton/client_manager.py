@@ -21,6 +21,7 @@ _CLIENT_REFRESH_INTERVAL = 60
 _CLIENT_PAGE_SIZE = 16
 
 _UPDATE_MESSAGE_PATTERN = re.compile(r"^resp:\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}:[\da-fA-F]+:clientReport:(\d+):\{(.*)\}$")
+_CHECK_ALIVE_RESPONSE_PATTERN = re.compile(r"^resp_check_alive:[\da-fA-F]{1,8}$")
 
 @dataclass
 class UpdateContext:
@@ -178,10 +179,12 @@ class ClientManager:
             if client_id not in self._client_pages:
                 return client_id
 
+    def _send_request(self, data: str) -> None:
+        self._socket.sendto(self._cipher.encrypt(data.encode()), (self._clu_ip, self._clu_port))
+
     def _send_keep_alive_packet(self) -> None:
-        data = b"12345678" # some random data to keep udp connection alive, clu is not supposed to respond to this packet
-        # might replace it with calling checkAlive() function in the future
-        self._socket.sendto(data, (self._client_ip, self._clu_port))
+        payload = f"req_check_alive:{self._client_ip}:{hex(random.randint(0, 1 << 30))[2:]}"  # noqa: S311
+        self._send_request(payload)
 
     def _register_client(self, page: _ClientPage) -> None:
         features_str = "{" + ",".join(f"{{{fe.object_id},{fe.index}}}" for fe in page.features) + "}"
@@ -190,7 +193,7 @@ class ClientManager:
         session_id = generate_id_hex()
         payload = f"req:{self._client_ip}:{session_id}:{payload}"
 
-        self._socket.sendto(self._cipher.encrypt(payload.encode()), (self._clu_ip, self._clu_port))
+        self._send_request(payload)
 
     def _refresh_clients(self) -> None:
         with self._client_pages_lock:
@@ -243,7 +246,8 @@ class ClientManager:
                 msg_time = time.time()
                 decrypted = self._cipher.decrypt(data).decode()
 
-                self._process_update_message(decrypted, msg_time)
+                if not re.match(_CHECK_ALIVE_RESPONSE_PATTERN, decrypted):
+                    self._process_update_message(decrypted, msg_time)
 
             except Exception:
                 _LOGGER.exception("Exception occured in listener thread")
