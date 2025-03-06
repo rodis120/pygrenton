@@ -22,8 +22,8 @@ class CluClient:
 
     def __init__(
         self,
-        ip: str,
-        port: int,
+        clu_ip: str,
+        clu_port: int,
         cipher: GrentonCipher,
         timeout: float = 1,
         client_refresh_interval: float = 60,
@@ -32,32 +32,30 @@ class CluClient:
         max_connections: int = 4,
         update_handler_threads: int = 4
     ) -> None:
-        self._addr = (ip, port)
+        self._clu_ip = clu_ip
+        self._clu_port = clu_port
+        self._cipher = cipher
         self._timeout = timeout
         self._client_refresh_interval = client_refresh_interval
 
         if client_ip:
-            self._local_ip = client_ip
+            self._client_ip = client_ip
         else:
-            self._local_ip = get_host_ip(ip)
-
-        self._cipher = cipher
+            self._client_ip = get_host_ip(clu_ip)
 
         self._request_semaphore = threading.Semaphore(max_connections)
-
-        self._client_manager = ClientManager(cipher, ip, port, client_ip, client_port, update_handler_threads)
+        self._client_manager = ClientManager(cipher, clu_ip, clu_port, self._client_ip, client_port, update_handler_threads)
 
     @property
     def clu_ip(self) -> str:
-        return self._addr[0]
-
+        return self._clu_ip
     @property
     def clu_port(self) -> int:
-        return self._addr[1]
+        return self._clu_port
 
     @property
     def client_ip(self) -> str:
-        return self._local_ip
+        return self._client_ip
 
     def send_request(self, msg: str, ignore_response: bool = False) -> str:
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -67,14 +65,14 @@ class CluClient:
 
         try:
             with self._request_semaphore:
-                sock.sendto(payload, self._addr)
+                sock.sendto(payload, (self._clu_ip, self._clu_port))
                 if not ignore_response:
                     resp, _ = sock.recvfrom(1024)
                     return self._cipher.decrypt(resp).decode()
         finally:
             sock.close()
 
-    async def send_request_async(self, msg: str):
+    async def send_request_async(self, msg: str) -> str:
         return await asyncio.to_thread(self.send_request, msg)
 
     def check_alive(self) -> int:
@@ -95,12 +93,12 @@ class CluClient:
     async def set_value_async(self, object_id: str, index: int, value: Any) -> None:
         await asyncio.to_thread(self.set_value, object_id, index, value)
 
-    def execute_method(self, object_id: str, index: int, *args: Any):
+    def execute_method(self, object_id: str, index: int, *args: Any) -> str|float|bool|None:
         args = [f'"{arg}"' if isinstance(arg, str) else str(arg) for arg in args]
         args_str = ",".join(args) if len(args) > 0 else "0"
         return self.send_lua_request(f"{object_id}:execute({index},{args_str})")
 
-    async def execute_method_async(self, object_id: str, index: int, *args: Any):
+    async def execute_method_async(self, object_id: str, index: int, *args: Any) -> str|float|bool|None:
         return await asyncio.to_thread(self.execute_method, object_id, index, *args)
 
     def register_value_change_handler(self, object_id: str, index: int|Iterable[int], handler: Callable[[UpdateContext], None]) -> None:
@@ -123,7 +121,7 @@ class CluClient:
         req_id = generate_id_hex()
 
         # simple lua script that returns data type of the response
-        payload = f'req:{self._local_ip}:{req_id}:(function() local res=({payload}) return (type(res) .. ":" .. tostring(res)) end)()'
+        payload = f'req:{self._client_ip}:{req_id}:(function() local res=({payload}) return (type(res) .. ":" .. tostring(res)) end)()'
 
         resp = self.send_request(payload)
         resp = self._extract_lua_response_payload(resp)
