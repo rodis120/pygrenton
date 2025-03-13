@@ -1,23 +1,24 @@
 
 import asyncio
 from typing import Any
+from collections.abc import Callable
+from typing import Any
+from xml.etree.ElementTree import Element
 
-from .clu_client import CluClient
+from .clu_client import CluClient, UpdateContext
 from .exceptions import FeatureNotGettableError, FeatureNotSettableError
-from .interfaces import FeatureInterface
-from .types import DataType
 
 
 class GFeature:
 
-    def __init__(self, clu_client: CluClient, object_id: str, interface: FeatureInterface) -> None:
+    def __init__(self, clu_client: CluClient, object_id: str, interface: Element) -> None:
         self._clu_client = clu_client
         self._object_id = object_id
         self._interface = interface
 
     @property
     def name(self) -> str:
-        return self._interface.name
+        return self._interface.attrib.get("name", "")
 
     @property
     def parent(self) -> str:
@@ -25,53 +26,52 @@ class GFeature:
 
     @property
     def index(self) -> int:
-        return self._interface.index
+        return int(self._interface.attrib["index"])
 
     @property
     def is_settable(self) -> bool:
-        return self._interface.set
+        return self._interface.attrib.get("set", "true") == "true"
 
     @property
     def is_gettable(self) -> bool:
-        return self._interface.get
+        return self._interface.attrib.get("get", "true") == "true"
 
     @property
-    def data_type(self) -> DataType:
-        return self._interface.data_type
+    def data_type(self) -> str:
+        return self._interface.attrib.get("type")
 
     @property
     def unit(self) -> str:
-        return self._interface.unit
+        return self._interface.attrib.get("unit")
 
     @property
-    def enum(self) -> dict | None:
-        return self._interface.enum
+    def enum(self) -> str | None:
+        return self._interface.attrib.get("enum")
 
     @property
-    def value_range(self) -> tuple[int, int] | None:
-        return self._interface.value_range
+    def value_range(self) -> str | None:
+        return self._interface.attrib.get("range")
 
-    def get_value(self) -> Any:
+    def get_value(self) -> Any | None:
         if not self.is_gettable:
             raise FeatureNotGettableError(self.name)
 
-        value = self._clu_client.get_value(self._object_id, self.index)
+        return self._clu_client.get_value(self._object_id, self.index)
 
-        return self.data_type.convert_value(value)
+    async def get_value_async(self) -> Any | None:
+        return await asyncio.to_thread(self.get_value)
 
-    async def get_value_async(self) -> Any:
-        return await asyncio.to_thread(self.get_value_async)
+    #TODO: fix or remove this method
+    # def get_value_mapped(self) -> Any:
+    #     val = self.get_value_async()
 
-    def get_value_mapped(self) -> Any:
-        val = self.get_value_async()
+    #     if self.enum is None or val not in self.enum.keys():
+    #         return val
 
-        if self.enum is None or val not in self.enum.keys():
-            return val
+    #     return self.enum[val]
 
-        return self.enum[val]
-
-    async def get_value_mapped_async(self) -> Any:
-        return await asyncio.to_thread(self.get_value_mapped)
+    # async def get_value_mapped_async(self) -> Any:
+    #     return await asyncio.to_thread(self.get_value_mapped)
 
     def set_value(self, value: Any) -> None:
         if not self.is_settable:
@@ -81,14 +81,14 @@ class GFeature:
             raise ValueError(f"Value: {value} is not in enum: {self.enum}")
         if self.value_range is not None and (value < self.value_range[0] or value > self.value_range[1]):
             raise ValueError(f"Value: {value} is not in value range: ({self.value_range[0]} - {self.value_range[1]})")
-
+    
         self._clu_client.set_value(self._object_id, self.index, value)
 
     async def set_value_async(self, value: Any) -> None:
         await asyncio.to_thread(self.set_value, value)
 
-    def register_handler(self, handler: Any) -> None:
+    def register_handler(self, handler: Callable[[UpdateContext], None]) -> None:
         self._clu_client.register_value_change_handler(self._object_id, self.index, handler)
 
-    def remove_handler(self, handler: Any) -> None:
+    def remove_handler(self, handler: Callable[[UpdateContext], None]) -> None:
         self._clu_client.remove_value_change_handler(self._object_id, self.index, handler)
