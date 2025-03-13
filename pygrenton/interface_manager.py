@@ -4,12 +4,13 @@ import logging
 import pickle
 import re
 from pathlib import Path
+from typing import Any
+from xml.etree.ElementTree import Element
 from zipfile import ZipFile
 
 import requests
 
-from .interfaces import CluInterface, ModuleInterface
-from .parsers.interfaces_parser import parse_interfaces
+from .parsers.interface_parser import CluIndex, ModuleIndex, parse_interfaces
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -50,9 +51,8 @@ def _download_interfaces(version: str, cache_dir: Path, timeout: float=1) -> Non
         _LOGGER.exception("Unable to save interfaces.")
 
 class InterfaceManager:
-    #TODO: maybe create database for intefaces
-    _clus: dict[int, list[CluInterface]] = None
-    _modules: dict[int, list[ModuleInterface]] = None
+    _clus: dict[CluIndex, Element] = None
+    _modules: dict[ModuleIndex, Element] = None
 
     def __init__(self, cache_dir: Path|str) -> None:
         self._dir = Path(cache_dir)
@@ -70,48 +70,33 @@ class InterfaceManager:
             except:
                 self._parse_interfaces()
 
-    def get_clu_interface(self, hw_type: int, fw_type: int, api_version: int) -> CluInterface | None:
-        clu_list = self._clus[hw_type]
+    def get_clu_interface(self, hw_type: int, fw_type: int, api_version: int) -> Element | None:
+        key = CluIndex(hw_type, fw_type, api_version)
+        return self._clus.get(key)
 
-        if clu_list is None:
-            return None
-
-        for clu in clu_list:
-            if clu.fw_api_version == api_version and clu.fw_type == fw_type:
-                return clu
-
-        return clu_list[-1]
-
-    def get_module_interface(self, hw_type: int, fw_type: int, api_version: int) -> ModuleInterface | None:
-        mod_list = self._modules[hw_type]
-
-        if mod_list is None:
-            return None
-
-        for mod in mod_list:
-            if mod.fw_api_version == api_version and mod.fw_type == fw_type:
-                return mod
-
-        return mod_list[-1]
+    def get_module_interface(self, hw_type: int, fw_type: int, api_version: int) -> Element | None:
+        key = ModuleIndex(hw_type, fw_type, api_version)
+        return self._modules.get(key)
 
     def _parse_interfaces(self) -> None:
-        clus, modules = parse_interfaces(self._dir + "/device-interfaces")
+        clus, modules = parse_interfaces(Path.joinpath(self._dir, "device-interfaces"))
         self._clus = clus
         self._modules = modules
         self._save_interface_cache()
 
-    def _save_list(self, list: list, filename: str) -> None:
+    def _save_data(self, data: Any, filename: str) -> None:
         with Path.joinpath(self._dir, filename).open(mode="wb+") as file:
-            pickle.dump(list, file)
+            pickle.dump(data, file)
 
     def _save_interface_cache(self) -> None:
-        self._save_list(self._clus, "clus.cache")
-        self._save_list(self._modules, "modules.cache")
+        self._save_data(self._clus, "clus.cache")
+        self._save_data(self._modules, "modules.cache")
 
-    def _load_list(self, filename: str) -> list:
+    def _load_data(self, filename: str) -> Any:
         with Path.joinpath(self._dir, filename).open(mode="rb") as file:
             return pickle.load(file)
 
     def _load_interface_cache(self) -> None:
-        self._clus = self._load_list("clus.cache")
-        self._modules = self._load_list("modules.cache")
+        #TODO: implement cache validation IMPORTANT!!!
+        self._clus = self._load_data("clus.cache")
+        self._modules = self._load_data("modules.cache")
