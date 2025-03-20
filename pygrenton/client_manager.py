@@ -215,7 +215,7 @@ class ClientManager:
             raise InvalidUpdateMessageError
 
         client_id = int(m.group(1))
-        values = parse_list(m.group(2))[1]
+        values = parse_list(m.group(2))
 
         return client_id, values
 
