@@ -96,7 +96,7 @@ class ClientManager:
 
         self._feature_entries: dict[_FeatureKey, _FeatureEntry] = {}
         self._client_pages: dict[int, _ClientPage] = {}
-        self._nonfull_pages: set[_ClientPage] = {}
+        self._nonfull_pages: set[_ClientPage] = set()
         self._client_pages_lock = Lock()
         self._page_modified = False
 
@@ -157,8 +157,7 @@ class ClientManager:
             if not entry.update_handlers:
                 self._remove_feature_entry(entry)
 
-    def _remove_feature_entry(self, key: _FeatureKey) -> None:
-        entry = self._feature_entries.get(key)
+    def _remove_feature_entry(self, entry: _FeatureEntry) -> None:
         for page in self._client_pages.values():
             if entry in page.features:
                 page.features.remove(entry)
@@ -216,7 +215,7 @@ class ClientManager:
             raise InvalidUpdateMessageError
 
         client_id = int(m.group(1))
-        values = parse_list(m.group(2))
+        values = parse_list(m.group(2))[1]
 
         return client_id, values
 
