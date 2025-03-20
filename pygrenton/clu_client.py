@@ -10,7 +10,7 @@ from .cipher import GrentonCipher
 from .client_manager import ClientManager, UpdateContext
 from .exceptions import InvalidLuaResponseError
 from .utils import (
-    generate_id_hex,
+    gen_session_id,
     get_host_ip,
 )
 
@@ -117,7 +117,7 @@ class CluClient:
         await asyncio.to_thread(self.remove_value_change_handler, object_id, index, handler)
 
     def send_lua_request(self, payload: str) -> str|float|bool|None:
-        req_id = generate_id_hex()
+        req_id = gen_session_id()
 
         # simple lua script that returns data type of the response
         payload = f'req:{self._client_ip}:{req_id}:(function() local res=({payload}) return (type(res) .. ":" .. tostring(res)) end)()'

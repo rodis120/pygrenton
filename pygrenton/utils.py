@@ -18,8 +18,8 @@ def get_host_ip(clu_ip: str) -> str:
     #TODO: throw exception when no ip is found
     return ""
 
-def generate_id_hex(lenght=8) -> str:
-    return ''.join(random.choices("01234567890abcdef", k=lenght))
+def gen_session_id(bits: int=32) -> str:
+    return hex(random.randint(0, 2**bits))[2:]  # noqa: S311
 
 def parse_list(msg: str, start: int = 0) -> tuple[int, list]:
     values = []

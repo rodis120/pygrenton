@@ -13,7 +13,7 @@ from typing import Any
 
 from .cipher import GrentonCipher
 from .exceptions import InvalidUpdateMessageError
-from .utils import generate_id_hex, parse_list
+from .utils import gen_session_id, parse_list
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -190,7 +190,7 @@ class ClientManager:
         features_str = "{" + ",".join(f"{{{fe.object_id},{fe.index}}}" for fe in page.features) + "}"
         payload = f'SYSTEM:clientRegister("{self._client_ip}",{self._client_port},{page.client_id},{features_str})'
 
-        session_id = generate_id_hex()
+        session_id = gen_session_id()
         payload = f"req:{self._client_ip}:{session_id}:{payload}"
 
         self._send_request(payload)
