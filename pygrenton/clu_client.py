@@ -87,6 +87,9 @@ class CluClient:
         return await asyncio.to_thread(self.get_value, object_id, index)
 
     def set_value(self, object_id: str, index: int, value: Any) -> None:
+        if isinstance(value, str):
+            value = f'"{value}"'
+
         self.send_lua_request(f"{object_id}:set({index},{value})")
 
     async def set_value_async(self, object_id: str, index: int, value: Any) -> None:
