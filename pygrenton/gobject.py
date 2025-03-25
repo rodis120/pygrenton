@@ -9,11 +9,12 @@ from .gmethod import GMethod
 
 class GObject:
 
-    def __init__(self, clu_client: CluClient, name: str, object_id: str, interface: Element) -> None:
+    def __init__(self, clu_client: CluClient, name: str, object_id: str, interface: Element, parent_interface: Element) -> None:
         self._clu_client = clu_client
         self._name = name
         self._object_id = object_id
         self._interface = interface
+        self._parent_interface = parent_interface
 
         if interface.tag == "clu":
             self._obj_class = 0
@@ -54,6 +55,10 @@ class GObject:
     @property
     def interface(self) -> Element:
         return self._interface
+
+    @property
+    def parent_interface(self) -> Element:
+        return self._parent_interface
 
     def has_feature(self, key: int | str) -> bool:
         if isinstance(key, int):
