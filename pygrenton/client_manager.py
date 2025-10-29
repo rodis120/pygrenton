@@ -120,6 +120,7 @@ class ClientManager:
         self._handler_thread_pool.terminate()
 
     def add_update_handler(self, object_id: str, index: int, handler: Callable[[UpdateContext], None]) -> None:
+        """Add feature value update handler."""
         with self._client_pages_lock:
             key = _FeatureKey(object_id, index)
 
@@ -145,6 +146,7 @@ class ClientManager:
                 self._nonfull_pages.add(page)
 
     def remove_update_handler(self, object_id: str, index: int, handler: Callable[[UpdateContext], None]) -> None:
+        """Remove feature value update handler."""
         with self._client_pages_lock:
             key = _FeatureKey(object_id, index)
 
