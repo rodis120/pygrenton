@@ -146,10 +146,6 @@ class CluClient:
     async def send_lua_request_async(self, payload: str) -> str|float|bool|None:
         return await asyncio.to_thread(self.send_lua_request, payload)
 
-    def run_lua_garbage_collector(self) -> None:
-        payload = 'collectgarbage("collect")'
-        self.send_lua_request(payload)
-
     def _extract_lua_response_payload(self, response: str) -> str:
         match = _LUA_RESPONSE_PATTERN.match(response)
         if match:
