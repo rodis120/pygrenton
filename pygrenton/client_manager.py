@@ -184,7 +184,7 @@ class ClientManager:
         self._socket.sendto(self._cipher.encrypt(data.encode()), (self._clu_ip, self._clu_port))
 
     def _send_keep_alive_packet(self) -> None:
-        payload = f"req_check_alive:{self._client_ip}:{hex(random.randint(0, 1 << 30))[2:]}"  # noqa: S311
+        payload = f"req_check_alive:{self._client_ip}:{gen_session_id()}"
         self._send_request(payload)
 
     def _register_client(self, page: _ClientPage) -> None:
