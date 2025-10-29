@@ -20,13 +20,12 @@ _LUA_RESPONSE_PATTERN = re.compile(r"^resp:\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}:[\
 
 class CluClient:
 
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         clu_ip: str,
         clu_port: int,
         cipher: GrentonCipher,
         timeout: float = 1,
-        client_refresh_interval: float = 60,
         client_ip: str | None = None,
         client_port: int = 0,
         max_connections: int = 4,
@@ -36,7 +35,6 @@ class CluClient:
         self._clu_port = clu_port
         self._cipher = cipher
         self._timeout = timeout
-        self._client_refresh_interval = client_refresh_interval
 
         if client_ip:
             self._client_ip = client_ip
