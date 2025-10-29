@@ -72,10 +72,10 @@ class CluClient:
     async def send_request_async(self, msg: str) -> str:
         return await asyncio.to_thread(self.send_request, msg)
 
-    def check_alive(self) -> int:
-        return int(self.send_lua_request("checkAlive()"), 16)
+    def check_alive(self) -> str:
+        return str(self.send_lua_request("checkAlive()"))
 
-    async def check_alive_async(self) -> int:
+    async def check_alive_async(self) -> str:
         return await asyncio.to_thread(self.check_alive)
 
     def get_value(self, object_id: str, index: int) -> str|float|bool|None:
