@@ -42,27 +42,27 @@ class GMethod:
     def unit(self) -> str | None:
         return self._interface.unit
 
-    async def execute_method_async(self, *args: Any):
+    def execute_method(self, *args: Any) -> Any:
         if len(args) != len(self.parameters):
             msg = f"Incorrect number of arguments: expected {len(self.parameters)}, provided {len(args)}"
             raise ValueError(msg)
 
         for arg, intr in zip(args, self.parameters, strict=False):
             if intr.data_type == DataType.NUMBER:
-                if not (isinstance(arg, int) or isinstance(arg, float)):
+                if not isinstance(arg, (int, float)):
                     raise ValueError(f"\"{type(arg)}\" is incorrect type for argument \"{intr.name}\". Expected a number")
             elif intr.data_type == DataType.STRING and not isinstance(arg, str):
                 raise ValueError(f"\"{type(arg)}\" is incorrect type for argument \"{intr.name}\". Expected a string")
 
         value = None
         if self.call_type == CallType.SET:
-            return await self._clu_client.set_value_async(self._object_id, self.parameters, args[0])
+            return self._clu_client.set_value(self._object_id, self.index, args[0])
         if self.call_type == CallType.GET:
-            value = await self._clu_client.get_value_async(self._object_id, self.parameters)
+            value = self._clu_client.get_value(self._object_id, self.index)
         else:
-            value = await self._clu_client.execute_method_async(self._object_id, self.index, *args)
+            value = self._clu_client.execute_method(self._object_id, self.index, *args)
 
         return self.return_type.convert_value(value)
 
-    def execute_method(self, *args: Any):
-        return asyncio.get_event_loop().run_until_complete(self.execute_method_async(*args))
+    async def execute_method_async(self, *args: Any) -> Any:
+        return await asyncio.to_thread(self.execute_method, *args)

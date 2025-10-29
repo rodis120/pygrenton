@@ -1,5 +1,4 @@
-
-import asyncio
+from typing import Any
 
 from .clu_client import CluClient
 from .gfeature import GFeature
@@ -38,10 +37,6 @@ class GObject:
     @property
     def object_class(self) -> int:
         return self._obj_class
-
-    @property
-    def object_class_name(self) -> str:
-        return self._interface.obj_class
 
     @property
     def features(self) -> list[GFeature]:
@@ -99,16 +94,16 @@ class GObject:
         return await self._clu_client.get_value_async(self._object_id, index)
 
     def get_value(self, index: int):
-        return asyncio.get_event_loop().run_until_complete(self.get_value_async(index))
+        return self._clu_client.get_value(self._object_id, index)
 
-    async def set_value_async(self, index: int, value) -> None: 
+    async def set_value_async(self, index: int, value: Any) -> None:
         await self._clu_client.set_value_async(self._object_id, index, value)
 
-    def set_value(self, index: int, value) -> None:
-        asyncio.get_event_loop().run_until_complete(self.set_value_async(index, value))
+    def set_value(self, index: int, value: Any) -> None:
+        return self._clu_client.set_value(self._object_id, index, value)
 
-    async def execute_method_async(self, index: int, *args):
+    async def execute_method_async(self, index: int, *args: Any):
         return await self._clu_client.execute_method_async(self._object_id, index, args)
 
-    def execute_method(self, index: int, *args):
-        return asyncio.get_event_loop().run_until_complete(self.execute_method_async(index, args))
+    def execute_method(self, index: int, *args: Any):
+        return self._clu_client.execute_method(self._object_id, index, args)
