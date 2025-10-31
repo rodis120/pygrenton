@@ -60,7 +60,7 @@ class GFeature:
         return self.data_type.convert_value(value)
 
     async def get_value_async(self) -> Any:
-        return await asyncio.to_thread(self.get_value_async)
+        return await asyncio.to_thread(self.get_value)
 
     def get_value_mapped(self) -> Any:
         val = self.get_value_async()
