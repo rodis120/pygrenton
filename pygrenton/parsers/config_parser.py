@@ -3,9 +3,10 @@ import logging
 from dataclasses import dataclass
 from xml.etree.ElementTree import Element
 
-from ..clu_client import CluClient
-from ..gobject import GObject
-from ..interface_manager import InterfaceManager
+from pygrenton.clu_client import CluClient
+from pygrenton.gobject import GObject
+from pygrenton.interface_manager import InterfaceManager
+
 from .module_specs_parser import CLUSpecs
 from .om_parser import OMEndpoints
 
@@ -22,20 +23,20 @@ def _dummy_clu_interface(hw_type: int, fw_type: int, api_version: int) -> Elemen
         tag="CLU",
         attrib={
             "typeName": "UNKNOWN_CLU",
-            "hardwareType": hex(hw_type)[2:],
-            "firmwareType": hex(fw_type)[2:],
-            "firmwareVersion": hex(api_version)[2:]
+            "hardwareType": f"{hw_type:x}",
+            "firmwareType": f"{fw_type:x}",
+            "firmwareVersion": f"{api_version:x}"
         }
     )
 
 def _dummy_module_interface(hw_type: int, fw_type: int, api_version: int) -> Element:
-    module = Element(tag="module", attrib={"typeId": hex(hw_type)[2:], "name": "UNKNOWN_MODULE"})
-    firmware = Element(tag="firmware", attrib={"typeId": hex(fw_type)[2:], "version": hex(api_version)[2:]})
+    module = Element(tag="module", attrib={"typeId": f"{hw_type:x}", "name": "UNKNOWN_MODULE"})
+    firmware = Element(tag="firmware", attrib={"typeId": f"{fw_type:x}", "version": f"{api_version:x}"})
     module.append(firmware)
     return module
 
 def _dummy_object_interface(obj_class: int, name: str="UNKNOWN_OBJECT") -> Element:
-    return Element(tag="object", attrib={"class": obj_class, "name": name})
+    return Element(tag="object", attrib={"class": str(obj_class), "name": name})
 
 def parse_clu_config(specs: CLUSpecs, om: OMEndpoints, interface_manager: InterfaceManager, clu_client: CluClient) -> CluConfig:
     objects_by_id: dict[str, GObject] = {}
@@ -44,7 +45,7 @@ def parse_clu_config(specs: CLUSpecs, om: OMEndpoints, interface_manager: Interf
         objects_by_id[obj.object_id] = obj
 
     clu_interface = interface_manager.get_clu_interface(specs.hw_type, specs.fw_type, specs.fw_api_version)
-    if clu_interface in None:
+    if clu_interface is None:
         _LOGGER.debug("Missing object interface. hw_type: %d, fw_type: %d, fw_api_version: %d.", specs.hw_type, specs.fw_type, specs.fw_api_version)
         clu_interface = _dummy_clu_interface(specs.hw_type, specs.fw_type, specs.fw_api_version)
     gclu = GObject(clu_client, om.get_name(om.local_clu.object_id), om.local_clu.object_id, clu_interface, clu_interface)
@@ -73,7 +74,7 @@ def parse_clu_config(specs: CLUSpecs, om: OMEndpoints, interface_manager: Interf
 
             obj_name = om.get_name(obj.object_id)
 
-            gobj = GObject(clu_client, obj_name, obj.object_id, obj_int)
+            gobj = GObject(clu_client, obj_name, obj.object_id, obj_int, mod_int)
             add_object(gobj)
 
     object_interfaces = {int(obj.attrib["class"]): obj for obj in clu_interface.iter("object")}
